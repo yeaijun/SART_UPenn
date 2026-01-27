@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SART IVF Post-treatment Predictor (Fixed)</title>
+    <style>
+        body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; background-color: #f4f7f6; color: #333; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { color: #2c3e50; border-bottom: 1px solid #ddd; padding-bottom: 15px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 0.95em; }
+        .sub-label { font-weight: normal; font-size: 0.85em; color: #666; margin-top: 4px; }
+        input[type="number"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .checkbox-group label { font-weight: normal; display: flex; align-items: center; cursor: pointer; }
+        .checkbox-group input { margin-right: 10px; width: auto; }
+        .btn { display: block; width: 100%; background: #17a2b8; color: white; border: none; padding: 15px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-top: 20px; }
+        .btn:hover { background: #138496; }
+        .switch-link { color: #007bff; cursor: pointer; font-weight: normal; font-size: 0.9em; margin-left: 10px; text-decoration: underline; }
+        .switch-link:hover { color: #0056b3; }
+        .height-container { display: flex; gap: 10px; }
+        .bmi-display { background-color: #f8f9fa; color: #555; cursor: not-allowed; }
+        #results { margin-top: 30px; background: #e9ecef; padding: 20px; border-radius: 4px; display: none; }
+        .result-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ccc; }
+        .result-row:last-child { border-bottom: none; }
+        .ci-text { font-size: 0.85em; color: #666; display: block; text-align: right; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Post-treatment Prediction Model <span style="color: #007bff;"> (UPenn) </span></h2>
+    <p>Predicts the cumulative probability of live birth over the second and third complete cycles (with 95% Confidence Intervals).</p>
+    <p class="sub-label"><em>Note: Use this only if your first complete cycle did not result in a live birth.</em></p>
+
+    <form id="ivfFormPost">
+        <div class="form-group">
+            <label>Current Age (18-50)</label>
+            <input type="number" id="age" min="18" max="50" required>
+        </div>
+
+        <div class="form-group">
+            <label id="heightLabel">
+                What is your Height(ft, i)? 
+                <span class="switch-link" onclick="toggleHeight()" id="heightSwitch">Switch to cm</span>
+            </label>
+            <div id="heightUS" class="height-container">
+                <input type="number" id="heightFt" placeholder="Feet" min="0" oninput="updateBmiDisplay()">
+                <input type="number" id="heightIn" placeholder="Inches" min="0" max="11" oninput="updateBmiDisplay()">
+            </div>
+            <div id="heightMetric" style="display:none;">
+                <input type="number" id="heightCm" placeholder="cm" min="50" oninput="updateBmiDisplay()">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label id="weightLabel">
+                What is your Weight(lb)? 
+                <span class="switch-link" onclick="toggleWeight()" id="weightSwitch">Switch to Kg</span>
+            </label>
+            <div id="weightUS">
+                <input type="number" id="weightLb" placeholder="lbs" min="50" oninput="updateBmiDisplay()">
+            </div>
+            <div id="weightMetric" style="display:none;">
+                <input type="number" id="weightKg" placeholder="kg" min="20" oninput="updateBmiDisplay()">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Calculated BMI:</label>
+            <input type="text" id="bmiDisplay" class="bmi-display" disabled>
+            <div class="sub-label">Model accepts BMI range: 16-50</div>
+        </div>
+
+        <div class="form-group">
+            <label>Eggs collected in first IVF cycle (0-29)</label>
+            <input type="number" id="eggs" min="0" max="29" required>
+            <div class="sub-label">Values > 29 will be set to 29.</div>
+        </div>
+
+        <div class="form-group checkbox-group"><label><input type="checkbox" id="maleFactor" value="1"> Male Factor Infertility</label></div>
+        <div class="form-group checkbox-group"><label><input type="checkbox" id="pcos" value="1"> Polycystic Ovaries / PCOS</label></div>
+        <div class="form-group checkbox-group"><label><input type="checkbox" id="uterine" value="1"> Uterine Problems (septum, myoma, adhesions)</label></div>
+        <div class="form-group checkbox-group"><label><input type="checkbox" id="dor" value="1"> Diminished Ovarian Reserve</label></div>
+
+        <button type="button" class="btn" onclick="calculatePost()">Calculate Probability</button>
+    </form>
+
+    <div id="results">
+        <h3>Cumulative Chance of Live Birth (95% CI):</h3>
+        <div class="result-row">
+            <span>After Cycle 2:</span>
+            <div style="text-align:right">
+                <span id="res2" style="font-weight:bold"></span>
+                <span id="ci2" class="ci-text"></span>
+            </div>
+        </div>
+        <div class="result-row">
+            <span>After Cycle 3:</span>
+            <div style="text-align:right">
+                <span id="res3" style="font-weight:bold"></span>
+                <span id="ci3" class="ci-text"></span>
+            </div>
+        </div>
+        <p style="font-size: 0.9em; color: #555; margin-top: 15px;">
+            This assumes you are starting your second complete cycle. Cycle 1 is already complete.
+        </p>
+        <div style="margin-top: 20px; text-align: center;">
+            <a href="ivf1.html" style="color: #007bff;">Back to Pre-treatment tool</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    let isHeightUS = true;
+    let isWeightUS = true;
+
+    function toggleHeight() {
+        isHeightUS = !isHeightUS;
+        const label = document.getElementById('heightLabel');
+        const switchLink = document.getElementById('heightSwitch');
+        if (isHeightUS) {
+            document.getElementById('heightUS').style.display = 'flex';
+            document.getElementById('heightMetric').style.display = 'none';
+            label.childNodes[0].nodeValue = "What is your Height(ft, i)? ";
+            switchLink.innerText = "Switch to cm";
+        } else {
+            document.getElementById('heightUS').style.display = 'none';
+            document.getElementById('heightMetric').style.display = 'block';
+            label.childNodes[0].nodeValue = "What is your Height(cm)? ";
+            switchLink.innerText = "Switch to ft, i";
+        }
+        updateBmiDisplay();
+    }
+
+    function toggleWeight() {
+        isWeightUS = !isWeightUS;
+        const label = document.getElementById('weightLabel');
+        const switchLink = document.getElementById('weightSwitch');
+        if (isWeightUS) {
+            document.getElementById('weightUS').style.display = 'block';
+            document.getElementById('weightMetric').style.display = 'none';
+            label.childNodes[0].nodeValue = "What is your Weight(lb)? ";
+            switchLink.innerText = "Switch to Kg";
+        } else {
+            document.getElementById('weightUS').style.display = 'none';
+            document.getElementById('weightMetric').style.display = 'block';
+            label.childNodes[0].nodeValue = "What is your Weight(Kg)? ";
+            switchLink.innerText = "Switch to lb";
+        }
+        updateBmiDisplay();
+    }
+
+    function getCalculatedBMI() {
+        let heightInches = 0;
+        let weightLbs = 0;
+        let bmi = 0;
+        if (isHeightUS) {
+            const ft = parseFloat(document.getElementById('heightFt').value) || 0;
+            const inch = parseFloat(document.getElementById('heightIn').value) || 0;
+            heightInches = (ft * 12) + inch;
+        } else {
+            const cm = parseFloat(document.getElementById('heightCm').value) || 0;
+            heightInches = cm / 2.54;
+        }
+        if (isWeightUS) {
+            weightLbs = parseFloat(document.getElementById('weightLb').value) || 0;
+        } else {
+            const kg = parseFloat(document.getElementById('weightKg').value) || 0;
+            weightLbs = kg * 2.20462;
+        }
+        
+        if (heightInches > 0 && weightLbs > 0) {
+            bmi = (weightLbs / (heightInches * heightInches)) * 703;
+        }
+        return bmi;
+    }
+
+    function updateBmiDisplay() {
+        const bmi = getCalculatedBMI();
+        if (bmi > 0 && isFinite(bmi)) document.getElementById('bmiDisplay').value = bmi.toFixed(1);
+        else document.getElementById('bmiDisplay').value = "";
+    }
+
+    function max0_3(val) { return Math.pow(Math.max(val, 0), 3); }
+
+    function getProbWithCI(linearPred, variance) {
+        if (!isFinite(linearPred) || !isFinite(variance)) return { est: 0, low: 0, high: 0 };
+        const se = Math.sqrt(variance);
+        const est = Math.exp(linearPred) / (1 + Math.exp(linearPred));
+        const lowLP = linearPred - (1.96 * se);
+        const highLP = linearPred + (1.96 * se);
+        const low = Math.exp(lowLP) / (1 + Math.exp(lowLP));
+        const high = Math.exp(highLP) / (1 + Math.exp(highLP));
+        return { est: est, low: low, high: high };
+    }
+
+    function calculatePost() {
+        var age = parseFloat(document.getElementById('age').value);
+        var bmi = getCalculatedBMI();
+        var eggs = parseFloat(document.getElementById('eggs').value);
+        
+        if (isNaN(age) || age < 18 || age > 50) { alert("Please enter valid age (18-50)"); return; }
+        if (isNaN(bmi) || !isFinite(bmi) || bmi <= 0) { 
+            alert("Please check your Height and Weight inputs. Height must be greater than 0."); 
+            return; 
+        }
+        if (isNaN(eggs)) { alert("Please enter egg count"); return; }
+        
+        if (bmi < 16) bmi = 16; if (bmi > 50) bmi = 50;
+        if (eggs > 29) eggs = 29; if (eggs < 0) eggs = 0;
+
+        var maleFactor = document.getElementById('maleFactor').checked ? 1 : 0;
+        var pcos = document.getElementById('pcos').checked ? 1 : 0;
+        var uterine = document.getElementById('uterine').checked ? 1 : 0;
+        var dor = document.getElementById('dor').checked ? 1 : 0;
+
+        const intercept = -4.392e-02; const intercept_se = 4.634e-02;
+        const c3_beta = -2.079e-01; const c3_se =1.695e-02;
+
+        var age1 = age - 25;
+        var age2 = max0_3(age-34) - 0.5333333333*max0_3(age-20) - 0.4666666667*max0_3(age-50) + 66.6666666667;
+        var age3 = max0_3(age-38) - 0.4000000000*max0_3(age-20) - 0.6000000000*max0_3(age-50) + 50.0000000000;
+        var age4 = max0_3(age-40) - 0.3333333333*max0_3(age-20) - 0.6666666667*max0_3(age-50) + 41.6666666667;
+        const b_age = [3.146e-02, -2.868e-04 , -5.531e-03, 7.638e-03];
+        const se_age = [1.218e-02, 3.718e-04,  1.533e-03, 1.362e-03];
+
+        var bmi1 = bmi - 25;
+        var bmi2 = max0_3(bmi-22.26) - 0.8201780415*max0_3(bmi-16.2) - 0.1798219585*max0_3(bmi-49.9) + 538.3575463264;
+        var bmi3 = max0_3(bmi-25.39) - 0.7272997033*max0_3(bmi-16.2) - 0.2727002967*max0_3(bmi-49.9) + 495.6343833828;
+        var bmi4 = max0_3(bmi-30.29) - 0.5818991098*max0_3(bmi-16.2) - 0.4181008902*max0_3(bmi-49.9) + 396.5479501484;
+        const b_bmi = [2.880e-02, 6.542e-04, -5.120e-04, 8.817e-05];
+        const se_bmi = [1.448e-02,  5.571e-04, 5.675e-04, 1.592e-04];
+
+        var retr1 = eggs - 9;
+        var retr2 = max0_3(eggs-1) - 0.9655172414*max0_3(eggs-0) - 0.0344827586*max0_3(eggs-29) + 191.8620689655;
+        var retr3 = max0_3(eggs-6) - 0.7931034483*max0_3(eggs-0) - 0.2068965517*max0_3(eggs-29) + 551.1724137931;
+        var retr4 = max0_3(eggs-12) - 0.5862068966*max0_3(eggs-0) - 0.4137931034*max0_3(eggs-29) + 427.3448275862;
+        const b_eggs = [-1.659e-01 , -2.505e-02, 5.634e-03, -6.457e-04];
+        const se_eggs = [1.802e-02,  2.153e-03 , 5.486e-04, 1.186e-04];
+
+        const b_diag = [1.701e-01, 1.636e-01, -7.431e-02, -3.445e-01];
+        const se_diag = [1.431e-02, 2.538e-02, 2.889e-02, 1.628e-02];
+        const diag_vals = [maleFactor, pcos, uterine, dor];
+
+        let xb = intercept 
+            + (b_age[0]*age1 + b_age[1]*age2 + b_age[2]*age3 + b_age[3]*age4)
+            + (b_bmi[0]*bmi1 + b_bmi[1]*bmi2 + b_bmi[2]*bmi3 + b_bmi[3]*bmi4)
+            + (b_eggs[0]*retr1 + b_eggs[1]*retr2 + b_eggs[2]*retr3 + b_eggs[3]*retr4);
+        for(let i=0; i<b_diag.length; i++) xb += b_diag[i] * diag_vals[i];
+
+        let variance = Math.pow(intercept_se, 2)
+            + Math.pow(age1*se_age[0], 2) + Math.pow(age2*se_age[1], 2) + Math.pow(age3*se_age[2], 2) + Math.pow(age4*se_age[3], 2)
+            + Math.pow(bmi1*se_bmi[0], 2) + Math.pow(bmi2*se_bmi[1], 2) + Math.pow(bmi3*se_bmi[2], 2) + Math.pow(bmi4*se_bmi[3], 2)
+            + Math.pow(retr1*se_eggs[0], 2) + Math.pow(retr2*se_eggs[1], 2) + Math.pow(retr3*se_eggs[2], 2) + Math.pow(retr4*se_eggs[3], 2);
+        for(let i=0; i<se_diag.length; i++) variance += Math.pow(diag_vals[i]*se_diag[i], 2);
+
+        const p2 = getProbWithCI(xb, variance);
+
+        const xb3 = xb + c3_beta;
+        const var3 = variance + Math.pow(c3_se, 2);
+        const p3 = getProbWithCI(xb3, var3);
+
+        const cum2_est = 1 - (1 - p2.est);
+        const cum2_low = 1 - (1 - p2.low);
+        const cum2_high = 1 - (1 - p2.high);
+
+        const cum3_est = 1 - ((1 - p2.est) * (1 - p3.est));
+        const cum3_low = 1 - ((1 - p2.low) * (1 - p3.low));
+        const cum3_high = 1 - ((1 - p2.high) * (1 - p3.high));
+
+        document.getElementById('res2').innerText = (cum2_est * 100).toFixed(1) + "%";
+        document.getElementById('ci2').innerText = `(${ (cum2_low*100).toFixed(1) }% - ${ (cum2_high*100).toFixed(1) }%)`;
+
+        document.getElementById('res3').innerText = (cum3_est * 100).toFixed(1) + "%";
+        document.getElementById('ci3').innerText = `(${ (cum3_low*100).toFixed(1) }% - ${ (cum3_high*100).toFixed(1) }%)`;
+
+        document.getElementById('results').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
