@@ -96,7 +96,7 @@
     </form>
 
     <div id="results">
-        <h3>Cumulative Chance of Live Birth (95% CI):</h3>
+        <h3>Cumulative Chance of Live Birth:</h3>
         <div class="result-row">
             <span>After Cycle 1:</span>
             <div style="text-align:right">
@@ -125,6 +125,44 @@
 </div>
 
 <script>
+    // Vb for !hasAmh (explicit covariance matrix)
+    const Vb_noAMH_names = ["(Intercept)", "Cycle2", "Cycle3", "age1", "age2", "age3", "age4", "bmi1", "bmi2", "bmi3", "bmi4", "PrevTermBirths_TF_impute", "MaleInfertility", "Polycpcos", "Uterine", "Unexplained", "DiminishedOvarianReserve"];
+    const Vb_noAMH = [[0.0002408709404777, -9.24671809012867e-06, -7.32703354959733e-06, -6.96549511492793e-05, -9.71044554050293e-07, 1.18234979160757e-06, -3.6007226430941e-07, 1.3839930864323e-07, -4.21300973665256e-07, 5.59590459536281e-07, -2.08247801212991e-07, -9.43613301530694e-06, -2.68297275789897e-05, -2.95837640892655e-05, -9.54045156492557e-06, -2.63873232788713e-05, -1.30498101382695e-05], [-9.24671809012867e-06, 7.1336937486494e-05, 1.32975633517303e-05, -2.70140871236809e-07, 5.43690680092468e-10, 9.91212969115989e-09, -1.36582972593481e-08, 1.19906343540152e-08, -3.7108616407063204e-09, 3.947942608496271e-09, -8.45786534254294e-10, 1.85406880026203e-06, 3.26630457045967e-07, 1.75273139368354e-06, 4.07030074454012e-07, 1.28412058094319e-08, -2.23944923756975e-06], [-7.32703354959733e-06, 1.32975633517303e-05, 0.0002295215309076, -4.10322043091211e-07, -4.32846909015423e-09, 2.62503575048937e-08, -2.75831296398098e-08, -7.26608356045502e-08, -7.75373783584412e-09, 7.1442011177964606e-09, -1.05427392919428e-09, 3.35104505839952e-06, 5.13771450253475e-07, 2.86412632885794e-06, 6.902858971483e-07, 9.36674426892315e-09, -4.25059179484293e-06], [-6.96549511492793e-05, -2.70140871236809e-07, -4.10322043091211e-07, 4.1458554878809e-05, 9.963996607898e-07, -1.50242967900695e-06, 6.6315550930498e-07, -3.87710787247706e-07, -1.07179502839386e-08, 7.62973533857087e-09, -1.02218746919679e-10, 1.74664626146745e-07, 5.9842084748194e-07, 9.65798172749183e-07, -1.98864752745411e-07, -4.61181785381548e-07, -7.7021892724819e-08], [-9.71044554050293e-07, 5.43690680092468e-10, -4.32846909015423e-09, 9.963996607898e-07, 3.77371960747529e-08, -6.71359339454415e-08, 3.66592905317568e-08, -7.318671526933e-09, -1.12699656061814e-10, 5.7315279111139694e-11, 1.3969474182711001e-11, 1.30601665750239e-08, 1.08712073453673e-08, -1.07787269085496e-08, 9.92953755232923e-09, 1.83296168426054e-08, -8.856404419075321e-09], [1.18234979160757e-06, 9.91212969115989e-09, 2.62503575048937e-08, -1.50242967900695e-06, -6.71359339454415e-08, 1.28444183517665e-07, -7.61442109730785e-08, 1.20807791831167e-08, 1.52259154757645e-10, -7.85535828525027e-11, -1.4547755953670198e-11, -2.8163658359985704e-09, -1.5570708899117e-08, 1.09548237076323e-08, -8.40675550735906e-09, -3.5080352750364e-08, 1.8406428213326e-08], [-3.6007226430941e-07, -1.36582972593481e-08, -2.75831296398098e-08, 6.6315550930498e-07, 3.66592905317568e-08, -7.61442109730785e-08, 4.8949073356713e-08, -6.1847382851210405e-09, -6.78332610894584e-11, 4.34225779870174e-11, -2.03877399662435e-12, -1.11443452482823e-08, 5.5774091064995e-09, 1.3997960403717701e-09, -2.09977777165508e-09, 1.80561375536755e-08, -6.40265311590243e-09], [1.3839930864323e-07, 1.19906343540152e-08, -7.26608356045502e-08, -3.87710787247706e-07, -7.318671526933e-09, 1.20807791831167e-08, -6.1847382851210405e-09, 4.60177547618137e-05, 1.49307707235509e-06, -1.35109518404116e-06, 2.53645714229444e-07, 5.7153113570676e-08, -2.81835617307309e-07, -3.43586215026426e-07, -1.91519384602681e-07, -2.45004635996375e-08, -3.65603900815648e-08], [-4.21300973665256e-07, -3.7108616407063204e-09, -7.75373783584412e-09, -1.07179502839386e-08, -1.12699656061814e-10, 1.52259154757645e-10, -6.78332610894584e-11, 1.49307707235509e-06, 5.9850359885094e-08, -5.85686245409301e-08, 1.35240613762073e-08, 1.24075056278379e-08, -3.48379052765141e-09, -4.01303355206513e-08, 1.04051331849484e-08, -1.24534196551453e-08, -4.9614717440575704e-09], [5.59590459536281e-07, 3.947942608496271e-09, 7.1442011177964606e-09, 7.62973533857087e-09, 5.7315279111139694e-11, -7.85535828525027e-11, 4.34225779870174e-11, -1.35109518404116e-06, -5.85686245409301e-08, 5.89736066449712e-08, -1.45554585846482e-08, -1.17101027941611e-08, 3.41755375010894e-09, 5.79611087877248e-08, -1.14067830339273e-08, 1.24295568773913e-08, 2.9265718743057303e-09], [-2.08247801212991e-07, -8.45786534254294e-10, -1.05427392919428e-09, -1.02218746919679e-10, 1.3969474182711001e-11, -1.4547755953670198e-11, -2.03877399662435e-12, 2.53645714229444e-07, 1.35240613762073e-08, -1.45554585846482e-08, 4.119714975235451e-09, 1.7908364300257801e-09, -1.15672623445162e-09, -2.30543785267005e-08, 2.4792455380891703e-09, -2.6218898429283303e-09, 7.97456579769656e-10], [-9.43613301530694e-06, 1.85406880026203e-06, 3.35104505839952e-06, 1.74664626146745e-07, 1.30601665750239e-08, -2.8163658359985704e-09, -1.11443452482823e-08, 5.7153113570676e-08, 1.24075056278379e-08, -1.17101027941611e-08, 1.7908364300257801e-09, 6.13607281240218e-05, 3.49778512281532e-06, 3.76695144776113e-06, 4.06141064420119e-06, 4.92901522766326e-06, 2.38977369943057e-06], [-2.68297275789897e-05, 3.26630457045967e-07, 5.13771450253475e-07, 5.9842084748194e-07, 1.08712073453673e-08, -1.5570708899117e-08, 5.5774091064995e-09, -2.81835617307309e-07, -3.48379052765141e-09, 3.41755375010894e-09, -1.15672623445162e-09, 3.49778512281532e-06, 4.48244203925467e-05, 7.23422928519921e-06, 8.27605621047533e-07, 1.81030780244199e-05, 4.91126010828012e-06], [-2.95837640892655e-05, 1.75273139368354e-06, 2.86412632885794e-06, 9.65798172749183e-07, -1.07787269085496e-08, 1.09548237076323e-08, 1.3997960403717701e-09, -3.43586215026426e-07, -4.01303355206513e-08, 5.79611087877248e-08, -2.30543785267005e-08, 3.76695144776113e-06, 7.23422928519921e-06, 0.0001035544518472, 2.87704562606498e-06, 1.90927790747828e-05, 1.41689467475313e-05], [-9.54045156492557e-06, 4.07030074454012e-07, 6.902858971483e-07, -1.98864752745411e-07, 9.92953755232923e-09, -8.40675550735906e-09, -2.09977777165508e-09, -1.91519384602681e-07, 1.04051331849484e-08, -1.14067830339273e-08, 2.4792455380891703e-09, 4.06141064420119e-06, 8.27605621047533e-07, 2.87704562606498e-06, 0.0001854819963818, 1.24456602567401e-05, 2.37797314943245e-06], [-2.63873232788713e-05, 1.28412058094319e-08, 9.36674426892315e-09, -4.61181785381548e-07, 1.83296168426054e-08, -3.5080352750364e-08, 1.80561375536755e-08, -2.45004635996375e-08, -1.24534196551453e-08, 1.24295568773913e-08, -2.6218898429283303e-09, 4.92901522766326e-06, 1.81030780244199e-05, 1.90927790747828e-05, 1.24456602567401e-05, 9.03450742500273e-05, 1.96382893031527e-05], [-1.30498101382695e-05, -2.23944923756975e-06, -4.25059179484293e-06, -7.7021892724819e-08, -8.856404419075321e-09, 1.8406428213326e-08, -6.40265311590243e-09, -3.65603900815648e-08, -4.9614717440575704e-09, 2.9265718743057303e-09, 7.97456579769656e-10, 2.38977369943057e-06, 4.91126010828012e-06, 1.41689467475313e-05, 2.37797314943245e-06, 1.96382893031527e-05, 6.66373682585332e-05]];
+
+    function quadForm(x, V) {
+        let s = 0;
+        for (let i=0; i<x.length; i++) {
+            let rowSum = 0;
+            for (let j=0; j<x.length; j++) rowSum += V[i][j] * x[j];
+            s += x[i] * rowSum;
+        }
+        return s;
+    }
+    function mat3(A, V) { // A: 3 x p, V: p x p -> 3 x 3 = A V A'
+        const p = A[0].length;
+        // compute M = A V (3 x p)
+        const M = [new Array(p).fill(0), new Array(p).fill(0), new Array(p).fill(0)];
+        for (let r=0; r<3; r++) {
+            for (let j=0; j<p; j++) {
+                let s = 0;
+                for (let k=0; k<p; k++) s += A[r][k] * V[k][j];
+                M[r][j] = s;
+            }
+        }
+        // VarEta = M A' (3 x 3)
+        const R = [[0,0,0],[0,0,0],[0,0,0]];
+        for (let r=0; r<3; r++) {
+            for (let c=0; c<3; c++) {
+                let s = 0;
+                for (let k=0; k<p; k++) s += M[r][k] * A[c][k];
+                R[r][c] = s;
+            }
+        }
+        return R;
+    }
+    function logit(p) { return Math.log(p/(1-p)); }
+    function invlogit(z) { return 1/(1+Math.exp(-z)); }
+
     let isHeightUS = true;
     let isWeightUS = true;
 
@@ -247,71 +285,79 @@
         }
 
         let xb = 0;
-        let variance = 0;
+        let variance1 = 0, variance2 = 0, variance3 = 0;
         let c2_beta = 0, c3_beta = 0;
-        let c2_se = 0, c3_se = 0;
+        let varEtaMat = null; // 3x3 covariance of (eta1, eta2, eta3)
 
         if (!hasAmh) {
-            const intercept = 6.745e-01; const intercept_se = 1.634e-02;
-            c2_beta = -6.104e-01; c2_se = 8.951e-03;
-            c3_beta = -8.088e-01; c3_se = 1.553e-02;
+const intercept = 7.970e-01;
+c2_beta = -7.387e-01;   // Cycle2 shift
+c3_beta = -1.138e+00;   // Cycle3 shift
 
-            const age1 = age - 25;
-            const age2 = max0_3(age-32) - 0.5625*max0_3(age-18) - 0.4375*max0_3(age-50) + 192.9375;
-            const age3 = max0_3(age-35) - 0.46875*max0_3(age-18) - 0.53125*max0_3(age-50) + 160.78125;
-            const age4 = max0_3(age-39) - 0.34375*max0_3(age-18) - 0.65625*max0_3(age-50) + 117.90625;
-            const b_age = [6.141e-02 , 1.276e-03, -4.074e-03, 4.171e-03];
-            const se_age = [6.776e-03, 2.036e-04, 3.747e-04, 2.306e-04];
+const age1 = age - 25;
+const age2 = max0_3(age-32) - 0.5625*max0_3(age-18) - 0.4375*max0_3(age-50) + 192.9375;
+const age3 = max0_3(age-35) - 0.46875*max0_3(age-18) - 0.53125*max0_3(age-50) + 160.78125;
+const age4 = max0_3(age-39) - 0.34375*max0_3(age-18) - 0.65625*max0_3(age-50) + 117.90625;
+const b_age = [6.083e-02, 1.291e-03, -4.272e-03, 4.397e-03];
 
-            const bmi1 = bmi - 25;
-            const bmi2 = max0_3(bmi-22.24) - 0.8164705882*max0_3(bmi-16) - 0.1835294118*max0_3(bmi-50) + 574.1824828;
-            const bmi3 = max0_3(bmi-25.33) - 0.7255882353*max0_3(bmi-16) - 0.2744117647*max0_3(bmi-50) + 528.9538235;
-            const bmi4 = max0_3(bmi-30.22) - 0.5817647059*max0_3(bmi-16) - 0.4182352941*max0_3(bmi-50) + 424.1064706;
-            const b_bmi = [6.996e-02,  1.376e-03, -9.733e-04, 8.711e-05];
-            const se_bmi = [7.080e-03, 2.657e-04, 2.721e-04, 7.546e-05];
+const bmi1 = bmi - 25;
+const bmi2 = max0_3(bmi-22.15) - 0.79045997*max0_3(bmi-16) - 0.20954003*max0_3(bmi-45.35) + 553.09619;
+const bmi3 = max0_3(bmi-25.29) - 0.68347530*max0_3(bmi-16) - 0.31652470*max0_3(bmi-45.35) + 498.25349;
+const bmi4 = max0_3(bmi-30.18) - 0.51686542*max0_3(bmi-16) - 0.48313458*max0_3(bmi-45.35) + 376.79489;
+const b_bmi = [6.087e-02, 6.966e-04, 4.676e-05, -3.867e-04];
 
-            const b_diag = [0.156293, 0.234721, 0.378929, -0.045075, 0.222823, -0.712917];
-            const se_diag = [0.008178, 0.006977, 0.010542, 0.014021, 0.010071, 0.008529];
-            const diag_vals = [prevBirth, maleFactor, pcos, uterine, unexplained, dor];
+// Diagnosis coefficients (same order as Vb_noAMH_names)
+const b_diag = [1.182e-01, 1.963e-01, 3.630e-01, -7.621e-02, 2.047e-01, -7.205e-01];
+const diag_vals = [prevBirth, maleFactor, pcos, uterine, unexplained, dor];
 
-            xb = intercept 
-                + (b_age[0]*age1 + b_age[1]*age2 + b_age[2]*age3 + b_age[3]*age4)
-                + (b_bmi[0]*bmi1 + b_bmi[1]*bmi2 + b_bmi[2]*bmi3 + b_bmi[3]*bmi4);
-            for(let i=0; i<b_diag.length; i++) xb += b_diag[i] * diag_vals[i];
+// Linear predictor for Cycle 1
+xb = intercept 
+    + (b_age[0]*age1 + b_age[1]*age2 + b_age[2]*age3 + b_age[3]*age4)
+    + (b_bmi[0]*bmi1 + b_bmi[1]*bmi2 + b_bmi[2]*bmi3 + b_bmi[3]*bmi4);
+for(let i=0; i<b_diag.length; i++) xb += b_diag[i] * diag_vals[i];
 
-            variance = Math.pow(intercept_se, 2)
-                + Math.pow(age1*se_age[0], 2) + Math.pow(age2*se_age[1], 2) + Math.pow(age3*se_age[2], 2) + Math.pow(age4*se_age[3], 2)
-                + Math.pow(bmi1*se_bmi[0], 2) + Math.pow(bmi2*se_bmi[1], 2) + Math.pow(bmi3*se_bmi[2], 2) + Math.pow(bmi4*se_bmi[3], 2);
-            for(let i=0; i<se_diag.length; i++) variance += Math.pow(diag_vals[i]*se_diag[i], 2);
+// Build design vectors to use the full covariance matrix Vb_noAMH
+// Order: (Intercept), Cycle2, Cycle3, age1, age2, age3, age4, bmi1..bmi4, PrevTermBirths..., MaleInfertility, Polycpcos, Uterine, Unexplained, DiminishedOvarianReserve
+const xbase = [1, 0, 0, age1, age2, age3, age4, bmi1, bmi2, bmi3, bmi4,
+               prevBirth, maleFactor, pcos, uterine, unexplained, dor];
+const x2 = xbase.slice(); x2[1] = 1; // Cycle2 = 1
+const x3 = xbase.slice(); x3[2] = 1; // Cycle3 = 1
+
+variance1 = quadForm(xbase, Vb_noAMH);
+variance2 = quadForm(x2,    Vb_noAMH);
+variance3 = quadForm(x3,    Vb_noAMH);
+
+// Covariance matrix of (eta1, eta2, eta3) for cumulative CI via multivariate delta method
+varEtaMat = mat3([xbase, x2, x3], Vb_noAMH);
 
         } else {
-            const intercept = 6.802e-01; const intercept_se = 1.977e-02;
-            c2_beta = -5.386e-01; c2_se =  1.022e-02;
-            c3_beta = -6.699e-01; c3_se = 1.761e-02;
+            const intercept = 7.555e-01; const intercept_se = 1.885e-02;
+            c2_beta = -6.547e-01; const c2_se = 9.656e-03;
+            c3_beta = -9.874e-01; const c3_se = 1.718e-02;
 
             const age1 = age - 25;
             const age2 = max0_3(age-32) - 0.5625*max0_3(age-18) - 0.4375*max0_3(age-50) + 192.9375;
             const age3 = max0_3(age-35) - 0.46875*max0_3(age-18) - 0.53125*max0_3(age-50) + 160.78125;
             const age4 = max0_3(age-39) - 0.34375*max0_3(age-18) - 0.65625*max0_3(age-50) + 117.90625;
-            const b_age = [6.471e-02, 1.125e-03, -3.992e-03, 4.241e-03];
-            const se_age = [7.849e-03, 2.344e-04, 4.313e-04, 2.657e-04];
+            const b_age = [6.418e-02, 9.193e-04, -3.705e-03, 4.152e-03];
+            const se_age = [7.487e-03, 2.244e-04, 4.143e-04, 2.562e-04];
 
             const bmi1 = bmi - 25;
-            const bmi2 = max0_3(bmi-22.29) - 0.8150000000*max0_3(bmi-16) - 0.1850000000*max0_3(bmi-50) + 574.2324890;
-            const bmi3 = max0_3(bmi-25.39) - 0.7238235294*max0_3(bmi-16) - 0.2761764706*max0_3(bmi-50) + 527.6673529;
-            const bmi4 = max0_3(bmi-30.22) - 0.5817647059*max0_3(bmi-16) - 0.4182352941*max0_3(bmi-50) + 424.1064706;
-            const b_bmi = [8.146e-02, 1.520e-03, -1.060e-03, 7.152e-05];
-            const se_bmi = [8.091e-03, 3.022e-04, 3.123e-04, 8.820e-05];
+            const bmi2 = max0_3(bmi-22.26) - 0.78671210*max0_3(bmi-16) - 0.21328790*max0_3(bmi-45.35) + 552.94229;
+            const bmi3 = max0_3(bmi-25.33) - 0.68211244*max0_3(bmi-16) - 0.31788756*max0_3(bmi-45.35) + 497.25997;
+            const bmi4 = max0_3(bmi-30.18) - 0.51686542*max0_3(bmi-16) - 0.48313458*max0_3(bmi-45.35) + 376.79489;
+            const b_bmi = [6.921e-02, 8.464e-04, -9.425e-05, -3.618e-04];
+            const se_bmi = [7.707e-03, 2.836e-04, 2.852e-04, 7.547e-05];
 
             const amh1 = amhVal - 2.5;
-            const amh2 = max0_3(amhVal-0.99) - 0.9387116948*max0_3(amhVal-0.01) - 0.0612883052*max0_3(amhVal-16) + 11.0491138837;
-            const amh3 = max0_3(amhVal-2.05) - 0.8724202627*max0_3(amhVal-0.01) - 0.1275797373*max0_3(amhVal-16) + 13.3775162477;
-            const amh4 = max0_3(amhVal-4.00) - 0.7504690432*max0_3(amhVal-0.01) - 0.2495309568*max0_3(amhVal-16) + 11.5859279550;
-            const b_amh = [ 1.463e+00, 3.390e-01, -1.421e-01, -9.142e-03];
-            const se_amh = [2.995e-02, 1.519e-02, 9.301e-03,  1.231e-03];
+            const amh2 = max0_3(amhVal-0.99) - 0.94154942*max0_3(amhVal-0.01) - 0.05845058*max0_3(amhVal-16.7763) + 11.092923;
+            const amh3 = max0_3(amhVal-2.06) - 0.87773092*max0_3(amhVal-0.01) - 0.12226908*max0_3(amhVal-16.7763) + 13.465445;
+            const amh4 = max0_3(amhVal-4.00) - 0.76202263*max0_3(amhVal-0.01) - 0.23797737*max0_3(amhVal-16.7763) + 11.764295;
+            const b_amh = [1.462e+00, 3.442e-01, -1.450e-01, -8.764e-03];
+            const se_amh = [2.832e-02, 1.425e-02, 8.697e-03, 1.158e-03];
 
-            const b_diag = [1.744e-01, 1.721e-01, 5.369e-02, -9.541e-02, 2.231e-01 ,-1.127e-01];
-            const se_diag = [9.377e-03, 7.929e-03, 1.306e-02, 1.559e-02, 1.171e-02, 1.104e-02];
+            const b_diag = [1.260e-01, 1.384e-01, 4.907e-02, -1.177e-01, 1.779e-01, -9.855e-02];
+            const se_diag = [9.000e-03, 7.633e-03, 1.264e-02, 1.515e-02, 1.111e-02, 1.063e-02];
             const diag_vals = [prevBirth, maleFactor, pcos, uterine, unexplained, dor];
 
             xb = intercept 
@@ -320,43 +366,99 @@
                 + (b_amh[0]*amh1 + b_amh[1]*amh2 + b_amh[2]*amh3 + b_amh[3]*amh4);
             for(let i=0; i<b_diag.length; i++) xb += b_diag[i] * diag_vals[i];
 
-            variance = Math.pow(intercept_se, 2)
+            let variance = Math.pow(intercept_se, 2)
                 + Math.pow(age1*se_age[0], 2) + Math.pow(age2*se_age[1], 2) + Math.pow(age3*se_age[2], 2) + Math.pow(age4*se_age[3], 2)
                 + Math.pow(bmi1*se_bmi[0], 2) + Math.pow(bmi2*se_bmi[1], 2) + Math.pow(bmi3*se_bmi[2], 2) + Math.pow(bmi4*se_bmi[3], 2)
                 + Math.pow(amh1*se_amh[0], 2) + Math.pow(amh2*se_amh[1], 2) + Math.pow(amh3*se_amh[2], 2) + Math.pow(amh4*se_amh[3], 2);
             for(let i=0; i<se_diag.length; i++) variance += Math.pow(diag_vals[i]*se_diag[i], 2);
         }
+        if (hasAmh) {
+            variance1 = variance;
+            variance2 = variance + Math.pow(c2_se, 2);
+            variance3 = variance + Math.pow(c3_se, 2);
+            varEtaMat = null;
+        }
 
-        const p1 = getProbWithCI(xb, variance);
-        
-        const xb2 = xb + c2_beta;
-        const var2 = variance + Math.pow(c2_se, 2);
-        const p2 = getProbWithCI(xb2, var2);
+        const eta1 = xb;
+const eta2 = xb + c2_beta;
+const eta3 = xb + c3_beta;
 
-        const xb3 = xb + c3_beta;
-        const var3 = variance + Math.pow(c3_se, 2);
-        const p3 = getProbWithCI(xb3, var3);
+const p1 = getProbWithCI(eta1, variance1);
+const p2 = getProbWithCI(eta2, variance2);
+const p3 = getProbWithCI(eta3, variance3);
 
-        const cum1_est = 1 - (1 - p1.est);
-        const cum1_low = 1 - (1 - p1.low);
-        const cum1_high = 1 - (1 - p1.high);
+let cum1_est, cum1_low, cum1_high;
+let cum2_est, cum2_low, cum2_high;
+let cum3_est, cum3_low, cum3_high;
 
-        const cum2_est = 1 - ((1 - p1.est) * (1 - p2.est));
-        const cum2_low = 1 - ((1 - p1.low) * (1 - p2.low));
-        const cum2_high = 1 - ((1 - p1.high) * (1 - p2.high));
+// Cumulative estimates
+cum1_est = p1.est;
+cum2_est = 1 - ((1 - p1.est) * (1 - p2.est));
+cum3_est = 1 - ((1 - p1.est) * (1 - p2.est) * (1 - p3.est));
 
-        const cum3_est = 1 - ((1 - p1.est) * (1 - p2.est) * (1 - p3.est));
-        const cum3_low = 1 - ((1 - p1.low) * (1 - p2.low) * (1 - p3.low));
-        const cum3_high = 1 - ((1 - p1.high) * (1 - p2.high) * (1 - p3.high));
+// If we have the full covariance of (eta1,eta2,eta3), compute CI via multivariate delta method (recommended)
+if (!hasAmh && varEtaMat) {
+    const dp1 = p1.est * (1 - p1.est);
+    const dp2 = p2.est * (1 - p2.est);
+    const dp3 = p3.est * (1 - p3.est);
 
-        document.getElementById('res1').innerText = (cum1_est * 100).toFixed(1) + "%";
-        document.getElementById('ci1').innerText = `(${ (cum1_low*100).toFixed(1) }% - ${ (cum1_high*100).toFixed(1) }%)`;
+    // gradients wrt (eta1, eta2, eta3)
+    const g1 = [dp1, 0, 0];
+    const g2 = [dp1 * (1 - p2.est), dp2 * (1 - p1.est), 0];
+    const g3 = [
+        dp1 * (1 - p2.est) * (1 - p3.est),
+        dp2 * (1 - p1.est) * (1 - p3.est),
+        dp3 * (1 - p1.est) * (1 - p2.est)
+    ];
+
+    function quad3(g, M) {
+        // g' M g for 3x3
+        return g[0]*(M[0][0]*g[0] + M[0][1]*g[1] + M[0][2]*g[2]) +
+               g[1]*(M[1][0]*g[0] + M[1][1]*g[1] + M[1][2]*g[2]) +
+               g[2]*(M[2][0]*g[0] + M[2][1]*g[1] + M[2][2]*g[2]);
+    }
+
+    const varCum1 = quad3(g1, varEtaMat);
+    const varCum2 = quad3(g2, varEtaMat);
+    const varCum3 = quad3(g3, varEtaMat);
+
+    function logitCI(prob, varProb) {
+        const eps = 1e-12;
+        const p = Math.min(Math.max(prob, eps), 1 - eps);
+        const se_logit = Math.sqrt(Math.max(varProb, 0)) / (p * (1 - p));
+        const L = logit(p) - 1.96 * se_logit;
+        const U = logit(p) + 1.96 * se_logit;
+        return { low: invlogit(L), high: invlogit(U) };
+    }
+
+    const ci1 = logitCI(cum1_est, varCum1);
+    const ci2 = logitCI(cum2_est, varCum2);
+    const ci3 = logitCI(cum3_est, varCum3);
+
+    cum1_low = ci1.low; cum1_high = ci1.high;
+    cum2_low = ci2.low; cum2_high = ci2.high;
+    cum3_low = ci3.low; cum3_high = ci3.high;
+
+} else {
+    // Fallback: combine per-cycle logit CIs (assumes independence; kept for hasAmh==yes path)
+    cum1_low = p1.low;
+    cum1_high = p1.high;
+
+    cum2_low = 1 - ((1 - p1.low) * (1 - p2.low));
+    cum2_high = 1 - ((1 - p1.high) * (1 - p2.high));
+
+    cum3_low = 1 - ((1 - p1.low) * (1 - p2.low) * (1 - p3.low));
+    cum3_high = 1 - ((1 - p1.high) * (1 - p2.high) * (1 - p3.high));
+}
+
+document.getElementById('res1').innerText = (cum1_est * 100).toFixed(1) + "%";
+        /*document.getElementById('ci1').innerText = `(${ (cum1_low*100).toFixed(1) }% - ${ (cum1_high*100).toFixed(1) }%)`;*/
 
         document.getElementById('res2').innerText = (cum2_est * 100).toFixed(1) + "%";
-        document.getElementById('ci2').innerText = `(${ (cum2_low*100).toFixed(1) }% - ${ (cum2_high*100).toFixed(1) }%)`;
+        /*document.getElementById('ci2').innerText = `(${ (cum2_low*100).toFixed(1) }% - ${ (cum2_high*100).toFixed(1) }%)`;*/
 
         document.getElementById('res3').innerText = (cum3_est * 100).toFixed(1) + "%";
-        document.getElementById('ci3').innerText = `(${ (cum3_low*100).toFixed(1) }% - ${ (cum3_high*100).toFixed(1) }%)`;
+        /*document.getElementById('ci3').innerText = `(${ (cum3_low*100).toFixed(1) }% - ${ (cum3_high*100).toFixed(1) }%)`;*/
 
         document.getElementById('results').style.display = 'block';
     }
