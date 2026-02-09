@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SART IVF Pre-treatment Predictor (Fixed)</title>
+    <title>SART IVF Predictor (Deep Debug Mode)</title>
     <style>
         body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; background-color: #f4f7f6; color: #333; padding: 20px; }
         .container { max-width: 700px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -24,6 +24,17 @@
         .result-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ccc; }
         .result-row:last-child { border-bottom: none; }
         .ci-text { font-size: 0.85em; color: #666; display: block; text-align: right; }
+        
+        /* Debug Section Styles */
+        #debug-section { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; font-family: monospace; font-size: 0.8em; background: #f8f9fa; padding: 15px; border-radius: 4px; }
+        #debug-section h4 { margin-top: 0; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        .debug-block { margin-bottom: 15px; }
+        .debug-label { font-weight: bold; display: block; margin-bottom: 5px; color: #333; }
+        .matrix-container { overflow-x: auto; max-width: 100%; border: 1px solid #ddd; background: #fff; }
+        .matrix-table { border-collapse: collapse; width: max-content; }
+        .matrix-table td { border: 1px solid #eee; padding: 2px 5px; text-align: right; font-size: 0.75em; color: #555; }
+        .matrix-table tr:nth-child(even) { background-color: #f9f9f9; }
+        .vector-box { background: #fff; padding: 5px; border: 1px solid #ddd; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -118,6 +129,12 @@
                 <span id="ci3" class="ci-text"></span>
             </div>
         </div>
+        
+        <div id="debug-section">
+            <h4>Debug / Intermediate Calculations</h4>
+            <div id="debug-content"></div>
+        </div>
+
         <div style="margin-top: 20px; text-align: center;">
             <a href="ivf2.html" style="color: #007bff;">Did your first cycle fail? Try the Post-treatment tool</a>
         </div>
@@ -125,22 +142,39 @@
 </div>
 
 <script>
-    // Vb for !hasAmh (explicit covariance matrix)
-    const Vb_noAMH_names = ["(Intercept)", "Cycle2", "Cycle3", "age1", "age2", "age3", "age4", "bmi1", "bmi2", "bmi3", "bmi4", "PrevTermBirths_TF_impute", "MaleInfertility", "Polycpcos", "Uterine", "Unexplained", "DiminishedOvarianReserve"];
+    // --- COVARIANCE MATRICES ---
+
+    // Vb for !hasAmh (17x17)
     const Vb_noAMH = [[0.0002408709404777, -9.24671809012867e-06, -7.32703354959733e-06, -6.96549511492793e-05, -9.71044554050293e-07, 1.18234979160757e-06, -3.6007226430941e-07, 1.3839930864323e-07, -4.21300973665256e-07, 5.59590459536281e-07, -2.08247801212991e-07, -9.43613301530694e-06, -2.68297275789897e-05, -2.95837640892655e-05, -9.54045156492557e-06, -2.63873232788713e-05, -1.30498101382695e-05], [-9.24671809012867e-06, 7.1336937486494e-05, 1.32975633517303e-05, -2.70140871236809e-07, 5.43690680092468e-10, 9.91212969115989e-09, -1.36582972593481e-08, 1.19906343540152e-08, -3.7108616407063204e-09, 3.947942608496271e-09, -8.45786534254294e-10, 1.85406880026203e-06, 3.26630457045967e-07, 1.75273139368354e-06, 4.07030074454012e-07, 1.28412058094319e-08, -2.23944923756975e-06], [-7.32703354959733e-06, 1.32975633517303e-05, 0.0002295215309076, -4.10322043091211e-07, -4.32846909015423e-09, 2.62503575048937e-08, -2.75831296398098e-08, -7.26608356045502e-08, -7.75373783584412e-09, 7.1442011177964606e-09, -1.05427392919428e-09, 3.35104505839952e-06, 5.13771450253475e-07, 2.86412632885794e-06, 6.902858971483e-07, 9.36674426892315e-09, -4.25059179484293e-06], [-6.96549511492793e-05, -2.70140871236809e-07, -4.10322043091211e-07, 4.1458554878809e-05, 9.963996607898e-07, -1.50242967900695e-06, 6.6315550930498e-07, -3.87710787247706e-07, -1.07179502839386e-08, 7.62973533857087e-09, -1.02218746919679e-10, 1.74664626146745e-07, 5.9842084748194e-07, 9.65798172749183e-07, -1.98864752745411e-07, -4.61181785381548e-07, -7.7021892724819e-08], [-9.71044554050293e-07, 5.43690680092468e-10, -4.32846909015423e-09, 9.963996607898e-07, 3.77371960747529e-08, -6.71359339454415e-08, 3.66592905317568e-08, -7.318671526933e-09, -1.12699656061814e-10, 5.7315279111139694e-11, 1.3969474182711001e-11, 1.30601665750239e-08, 1.08712073453673e-08, -1.07787269085496e-08, 9.92953755232923e-09, 1.83296168426054e-08, -8.856404419075321e-09], [1.18234979160757e-06, 9.91212969115989e-09, 2.62503575048937e-08, -1.50242967900695e-06, -6.71359339454415e-08, 1.28444183517665e-07, -7.61442109730785e-08, 1.20807791831167e-08, 1.52259154757645e-10, -7.85535828525027e-11, -1.4547755953670198e-11, -2.8163658359985704e-09, -1.5570708899117e-08, 1.09548237076323e-08, -8.40675550735906e-09, -3.5080352750364e-08, 1.8406428213326e-08], [-3.6007226430941e-07, -1.36582972593481e-08, -2.75831296398098e-08, 6.6315550930498e-07, 3.66592905317568e-08, -7.61442109730785e-08, 4.8949073356713e-08, -6.1847382851210405e-09, -6.78332610894584e-11, 4.34225779870174e-11, -2.03877399662435e-12, -1.11443452482823e-08, 5.5774091064995e-09, 1.3997960403717701e-09, -2.09977777165508e-09, 1.80561375536755e-08, -6.40265311590243e-09], [1.3839930864323e-07, 1.19906343540152e-08, -7.26608356045502e-08, -3.87710787247706e-07, -7.318671526933e-09, 1.20807791831167e-08, -6.1847382851210405e-09, 4.60177547618137e-05, 1.49307707235509e-06, -1.35109518404116e-06, 2.53645714229444e-07, 5.7153113570676e-08, -2.81835617307309e-07, -3.43586215026426e-07, -1.91519384602681e-07, -2.45004635996375e-08, -3.65603900815648e-08], [-4.21300973665256e-07, -3.7108616407063204e-09, -7.75373783584412e-09, -1.07179502839386e-08, -1.12699656061814e-10, 1.52259154757645e-10, -6.78332610894584e-11, 1.49307707235509e-06, 5.9850359885094e-08, -5.85686245409301e-08, 1.35240613762073e-08, 1.24075056278379e-08, -3.48379052765141e-09, -4.01303355206513e-08, 1.04051331849484e-08, -1.24534196551453e-08, -4.9614717440575704e-09], [5.59590459536281e-07, 3.947942608496271e-09, 7.1442011177964606e-09, 7.62973533857087e-09, 5.7315279111139694e-11, -7.85535828525027e-11, 4.34225779870174e-11, -1.35109518404116e-06, -5.85686245409301e-08, 5.89736066449712e-08, -1.45554585846482e-08, -1.17101027941611e-08, 3.41755375010894e-09, 5.79611087877248e-08, -1.14067830339273e-08, 1.24295568773913e-08, 2.9265718743057303e-09], [-2.08247801212991e-07, -8.45786534254294e-10, -1.05427392919428e-09, -1.02218746919679e-10, 1.3969474182711001e-11, -1.4547755953670198e-11, -2.03877399662435e-12, 2.53645714229444e-07, 1.35240613762073e-08, -1.45554585846482e-08, 4.119714975235451e-09, 1.7908364300257801e-09, -1.15672623445162e-09, -2.30543785267005e-08, 2.4792455380891703e-09, -2.6218898429283303e-09, 7.97456579769656e-10], [-9.43613301530694e-06, 1.85406880026203e-06, 3.35104505839952e-06, 1.74664626146745e-07, 1.30601665750239e-08, -2.8163658359985704e-09, -1.11443452482823e-08, 5.7153113570676e-08, 1.24075056278379e-08, -1.17101027941611e-08, 1.7908364300257801e-09, 6.13607281240218e-05, 3.49778512281532e-06, 3.76695144776113e-06, 4.06141064420119e-06, 4.92901522766326e-06, 2.38977369943057e-06], [-2.68297275789897e-05, 3.26630457045967e-07, 5.13771450253475e-07, 5.9842084748194e-07, 1.08712073453673e-08, -1.5570708899117e-08, 5.5774091064995e-09, -2.81835617307309e-07, -3.48379052765141e-09, 3.41755375010894e-09, -1.15672623445162e-09, 3.49778512281532e-06, 4.48244203925467e-05, 7.23422928519921e-06, 8.27605621047533e-07, 1.81030780244199e-05, 4.91126010828012e-06], [-2.95837640892655e-05, 1.75273139368354e-06, 2.86412632885794e-06, 9.65798172749183e-07, -1.07787269085496e-08, 1.09548237076323e-08, 1.3997960403717701e-09, -3.43586215026426e-07, -4.01303355206513e-08, 5.79611087877248e-08, -2.30543785267005e-08, 3.76695144776113e-06, 7.23422928519921e-06, 0.0001035544518472, 2.87704562606498e-06, 1.90927790747828e-05, 1.41689467475313e-05], [-9.54045156492557e-06, 4.07030074454012e-07, 6.902858971483e-07, -1.98864752745411e-07, 9.92953755232923e-09, -8.40675550735906e-09, -2.09977777165508e-09, -1.91519384602681e-07, 1.04051331849484e-08, -1.14067830339273e-08, 2.4792455380891703e-09, 4.06141064420119e-06, 8.27605621047533e-07, 2.87704562606498e-06, 0.0001854819963818, 1.24456602567401e-05, 2.37797314943245e-06], [-2.63873232788713e-05, 1.28412058094319e-08, 9.36674426892315e-09, -4.61181785381548e-07, 1.83296168426054e-08, -3.5080352750364e-08, 1.80561375536755e-08, -2.45004635996375e-08, -1.24534196551453e-08, 1.24295568773913e-08, -2.6218898429283303e-09, 4.92901522766326e-06, 1.81030780244199e-05, 1.90927790747828e-05, 1.24456602567401e-05, 9.03450742500273e-05, 1.96382893031527e-05], [-1.30498101382695e-05, -2.23944923756975e-06, -4.25059179484293e-06, -7.7021892724819e-08, -8.856404419075321e-09, 1.8406428213326e-08, -6.40265311590243e-09, -3.65603900815648e-08, -4.9614717440575704e-09, 2.9265718743057303e-09, 7.97456579769656e-10, 2.38977369943057e-06, 4.91126010828012e-06, 1.41689467475313e-05, 2.37797314943245e-06, 1.96382893031527e-05, 6.66373682585332e-05]];
 
-    function quadForm(x, V) {
-        let s = 0;
-        for (let i=0; i<x.length; i++) {
-            let rowSum = 0;
-            for (let j=0; j<x.length; j++) rowSum += V[i][j] * x[j];
-            s += x[i] * rowSum;
-        }
-        return s;
-    }
+    // Vb for hasAmh (21x21)
+    const Vb_withAMH = [
+        [0.000355417,-1.29E-05,-1.04E-05,-9.58E-05,-1.33E-06,1.63E-06,-5.01E-07,6.48E-07,-5.49E-07,7.40E-07,-2.77E-07,-3.18E-05,-3.55E-05,2.62E-05,-5.00E-06,-1.19E-05,-3.65E-05,-2.15E-05,-1.30E-05,-3.50E-05,-1.17E-05],
+[-1.29E-05,9.32E-05,1.82E-05,-2.30E-07,4.04E-10,1.14E-08,-1.51E-08,2.15E-07,-1.09E-10,1.49E-09,-8.01E-10,-4.18E-07,-1.31E-06,8.37E-07,-9.94E-08,2.57E-06,4.09E-07,2.25E-07,2.82E-07,7.71E-08,-8.56E-07],
+[-1.04E-05,1.82E-05,0.000295146,-3.70E-07,-9.74E-09,3.94E-08,-3.63E-08,3.73E-07,-4.29E-10,2.28E-09,-9.95E-10,2.33E-06,-1.39E-06,1.10E-06,-2.09E-07,4.85E-06,6.23E-07,4.23E-07,5.56E-07,1.54E-07,-1.45E-06],
+[-9.58E-05,-2.30E-07,-3.70E-07,5.61E-05,1.34E-06,-2.02E-06,8.93E-07,-5.58E-07,-1.60E-08,1.17E-08,-2.27E-10,-9.11E-07,-2.34E-07,5.64E-08,3.15E-08,2.83E-07,8.22E-07,5.20E-07,-3.11E-07,-9.14E-07,-1.13E-07],
+[-1.33E-06,4.04E-10,-9.74E-09,1.34E-06,5.04E-08,-8.96E-08,4.90E-08,-1.15E-08,-2.03E-10,1.19E-10,1.61E-11,-4.84E-08,-1.21E-08,4.98E-09,4.41E-10,1.80E-08,1.46E-08,-3.49E-09,9.35E-09,2.09E-08,-3.19E-08],
+[1.63E-06,1.14E-08,3.94E-08,-2.02E-06,-8.96E-08,1.72E-07,-1.02E-07,1.74E-08,2.45E-10,-1.36E-10,-2.03E-11,9.67E-08,3.50E-08,-1.81E-08,6.76E-10,-6.05E-09,-2.15E-08,-2.09E-09,-3.96E-09,-4.36E-08,3.89E-08],
+[-5.01E-07,-1.51E-08,-3.63E-08,8.93E-07,4.90E-08,-1.02E-07,6.56E-08,-7.59E-09,-7.53E-11,4.34E-11,1.53E-12,-5.90E-08,-2.86E-08,1.65E-08,-1.44E-09,-1.24E-08,8.32E-09,7.69E-09,-6.84E-09,2.40E-08,8.72E-10],
+[6.48E-07,2.15E-07,3.73E-07,-5.58E-07,-1.15E-08,1.74E-08,-7.59E-09,5.94E-05,1.96E-06,-1.80E-06,3.39E-07,6.92E-07,1.69E-07,-9.20E-08,8.30E-09,1.42E-08,-4.45E-07,-8.44E-07,-1.49E-07,-1.60E-07,3.37E-07],
+[-5.49E-07,-1.09E-10,-4.29E-10,-1.60E-08,-2.03E-10,2.45E-10,-7.53E-11,1.96E-06,8.04E-08,-7.98E-08,1.85E-08,-3.79E-09,-2.04E-10,-1.02E-09,6.53E-10,1.44E-08,-6.17E-09,-6.56E-08,1.89E-08,-2.05E-08,-4.74E-09],
+[7.40E-07,1.49E-09,2.28E-09,1.17E-08,1.19E-10,-1.36E-10,4.34E-11,-1.80E-06,-7.98E-08,8.13E-08,-2.01E-08,6.59E-09,5.31E-10,9.54E-10,-6.91E-10,-1.43E-08,5.65E-09,8.84E-08,-2.07E-08,1.98E-08,3.98E-09],
+[-2.77E-07,-8.01E-10,-9.95E-10,-2.27E-10,1.61E-11,-2.03E-11,1.53E-12,3.39E-07,1.85E-08,-2.01E-08,5.70E-09,-2.05E-09,-4.66E-11,-2.84E-10,1.70E-10,2.50E-09,-1.54E-09,-3.23E-08,4.77E-09,-3.75E-09,2.94E-10],
+[-3.18E-05,-4.18E-07,2.33E-06,-9.11E-07,-4.84E-08,9.67E-08,-5.90E-08,6.92E-07,-3.79E-09,6.59E-09,-2.05E-09,0.000801975,0.000377415,-0.000217132,1.93E-05,1.78E-07,-7.33E-06,-3.04E-06,-5.93E-06,-5.67E-06,5.48E-05],
+[-3.55E-05,-1.31E-06,-1.39E-06,-2.34E-07,-1.21E-08,3.50E-08,-2.86E-08,1.69E-07,-2.04E-10,5.31E-10,-4.66E-11,0.000377415,0.000202927,-0.000122744,1.36E-05,-3.32E-07,-1.79E-06,-2.37E-06,-1.19E-06,-1.61E-06,6.10E-06],
+[2.62E-05,8.37E-07,1.10E-06,5.64E-08,4.98E-09,-1.81E-08,1.65E-08,-9.20E-08,-1.02E-09,9.54E-10,-2.84E-10,-0.000217132,-0.000122744,7.56E-05,-9.02E-06,2.74E-07,7.16E-07,2.47E-06,3.71E-07,6.78E-07,1.66E-07],
+[-5.00E-06,-9.94E-08,-2.09E-07,3.15E-08,4.41E-10,6.76E-10,-1.44E-09,8.30E-09,6.53E-10,-6.91E-10,1.70E-10,1.93E-05,1.36E-05,-9.02E-06,1.34E-06,-6.23E-08,6.57E-08,-7.24E-07,1.00E-07,4.88E-08,-1.59E-06],
+[-1.19E-05,2.57E-06,4.85E-06,2.83E-07,1.80E-08,-6.05E-09,-1.24E-08,1.42E-08,1.44E-08,-1.43E-08,2.50E-09,1.78E-07,-3.32E-07,2.74E-07,-6.23E-08,8.10E-05,4.46E-06,4.00E-06,4.83E-06,5.97E-06,3.31E-06],
+[-3.65E-05,4.09E-07,6.23E-07,8.22E-07,1.46E-08,-2.15E-08,8.32E-09,-4.45E-07,-6.17E-09,5.65E-09,-1.54E-09,-7.33E-06,-1.79E-06,7.16E-07,6.57E-08,4.46E-06,5.83E-05,8.85E-06,8.95E-07,2.37E-05,3.90E-06],
+[-2.15E-05,2.25E-07,4.23E-07,5.20E-07,-3.49E-09,-2.09E-09,7.69E-09,-8.44E-07,-6.56E-08,8.84E-08,-3.23E-08,-3.04E-06,-2.37E-06,2.47E-06,-7.24E-07,4.00E-06,8.85E-06,0.000159826,2.49E-06,2.39E-05,9.38E-06],
+[-1.30E-05,2.82E-07,5.56E-07,-3.11E-07,9.35E-09,-3.96E-09,-6.84E-09,-1.49E-07,1.89E-08,-2.07E-08,4.77E-09,-5.93E-06,-1.19E-06,3.71E-07,1.00E-07,4.83E-06,8.95E-07,2.49E-06,0.000229439,1.60E-05,8.87E-07],
+[-3.50E-05,7.71E-08,1.54E-07,-9.14E-07,2.09E-08,-4.36E-08,2.40E-08,-1.60E-07,-2.05E-08,1.98E-08,-3.75E-09,-5.67E-06,-1.61E-06,6.78E-07,4.88E-08,5.97E-06,2.37E-05,2.39E-05,1.60E-05,0.000123474,2.48E-05],
+[-1.17E-05,-8.56E-07,-1.45E-06,-1.13E-07,-3.19E-08,3.89E-08,8.72E-10,3.37E-07,-4.74E-09,3.98E-09,2.94E-10,5.48E-05,6.10E-06,1.66E-07,-1.59E-06,3.31E-06,3.90E-06,9.38E-06,8.87E-07,2.48E-05,0.000112912]
+];
+       
+
     function mat3(A, V) { // A: 3 x p, V: p x p -> 3 x 3 = A V A'
         const p = A[0].length;
-        // compute M = A V (3 x p)
         const M = [new Array(p).fill(0), new Array(p).fill(0), new Array(p).fill(0)];
         for (let r=0; r<3; r++) {
             for (let j=0; j<p; j++) {
@@ -149,7 +183,6 @@
                 M[r][j] = s;
             }
         }
-        // VarEta = M A' (3 x 3)
         const R = [[0,0,0],[0,0,0],[0,0,0]];
         for (let r=0; r<3; r++) {
             for (let c=0; c<3; c++) {
@@ -160,8 +193,25 @@
         }
         return R;
     }
+    
     function logit(p) { return Math.log(p/(1-p)); }
     function invlogit(z) { return 1/(1+Math.exp(-z)); }
+
+    function logitCI_prob(p, var_p) {
+        const eps = 1e-12;
+        const prob = Math.min(Math.max(p, eps), 1 - eps);
+        const se_logit = Math.sqrt(Math.max(var_p, 0)) / (prob * (1 - prob));
+        const L = logit(prob) - 1.96 * se_logit;
+        const U = logit(prob) + 1.96 * se_logit;
+        return { low: invlogit(L), high: invlogit(U) };
+    }
+
+    function logitCI_eta(eta, var_eta) {
+        const se = Math.sqrt(Math.max(var_eta, 0));
+        const L = eta - 1.96 * se;
+        const U = eta + 1.96 * se;
+        return { low: invlogit(L), high: invlogit(U) };
+    }
 
     let isHeightUS = true;
     let isWeightUS = true;
@@ -228,7 +278,6 @@
             weightLbs = kg * 2.20462;
         }
 
-        // Check against zero height to prevent Infinity
         if (heightInches > 0 && weightLbs > 0) {
             bmi = (weightLbs / (heightInches * heightInches)) * 703;
         }
@@ -244,23 +293,15 @@
 
     function max0_3(val) { return Math.pow(Math.max(val, 0), 3); }
 
-    function getProbWithCI(linearPred, variance) {
-        if (!isFinite(linearPred) || !isFinite(variance)) return { est: 0, low: 0, high: 0 };
-        const se = Math.sqrt(variance);
-        const est = Math.exp(linearPred) / (1 + Math.exp(linearPred));
-        const lowLP = linearPred - (1.96 * se);
-        const highLP = linearPred + (1.96 * se);
-        const low = Math.exp(lowLP) / (1 + Math.exp(lowLP));
-        const high = Math.exp(highLP) / (1 + Math.exp(highLP));
-        return { est: est, low: low, high: high };
-    }
-
     function calculate() {
         var age = parseFloat(document.getElementById('age').value);
         var bmi = getCalculatedBMI();
         
+        // Debug variables
+        let debug_xbase = [];
+        let debug_Vb = [];
+        
         if (isNaN(age) || age < 18 || age > 50) { alert("Please enter valid age (18-50)"); return; }
-        // Critical Check for Infinite/Invalid BMI
         if (isNaN(bmi) || !isFinite(bmi) || bmi <= 0) { 
             alert("Please check your Height and Weight inputs. Height must be greater than 0."); 
             return; 
@@ -284,80 +325,72 @@
             if (amhVal < 0.01) amhVal = 0.01; 
         }
 
+        let Veta = null; 
         let xb = 0;
-        let variance1 = 0, variance2 = 0, variance3 = 0;
         let c2_beta = 0, c3_beta = 0;
-        let varEtaMat = null; // 3x3 covariance of (eta1, eta2, eta3)
 
         if (!hasAmh) {
-const intercept = 7.970e-01;
-c2_beta = -7.387e-01;   // Cycle2 shift
-c3_beta = -1.138e+00;   // Cycle3 shift
+            const intercept = 7.446e-01;
+            c2_beta = -7.335e-01;
+            c3_beta = -1.138e+00;
 
-const age1 = age - 25;
-const age2 = max0_3(age-32) - 0.5625*max0_3(age-18) - 0.4375*max0_3(age-50) + 192.9375;
-const age3 = max0_3(age-35) - 0.46875*max0_3(age-18) - 0.53125*max0_3(age-50) + 160.78125;
-const age4 = max0_3(age-39) - 0.34375*max0_3(age-18) - 0.65625*max0_3(age-50) + 117.90625;
-const b_age = [6.083e-02, 1.291e-03, -4.272e-03, 4.397e-03];
+            const age1 = age - 25;
+            const age2 = max0_3(age-32) - 0.5625*max0_3(age-18) - 0.4375*max0_3(age-50) + 192.9375;
+            const age3 = max0_3(age-35) - 0.46875*max0_3(age-18) - 0.53125*max0_3(age-50) + 160.78125;
+            const age4 = max0_3(age-39) - 0.34375*max0_3(age-18) - 0.65625*max0_3(age-50) + 117.90625;
+            const b_age = [6.234e-02, 1.155e-03, -3.953e-03, 4.182e-03];
 
-const bmi1 = bmi - 25;
-const bmi2 = max0_3(bmi-22.15) - 0.79045997*max0_3(bmi-16) - 0.20954003*max0_3(bmi-45.35) + 553.09619;
-const bmi3 = max0_3(bmi-25.29) - 0.68347530*max0_3(bmi-16) - 0.31652470*max0_3(bmi-45.35) + 498.25349;
-const bmi4 = max0_3(bmi-30.18) - 0.51686542*max0_3(bmi-16) - 0.48313458*max0_3(bmi-45.35) + 376.79489;
-const b_bmi = [6.087e-02, 6.966e-04, 4.676e-05, -3.867e-04];
+            const bmi1 = bmi - 25;
+            const bmi2 = max0_3(bmi-22.15) - 0.79045997*max0_3(bmi-16) - 0.20954003*max0_3(bmi-45.35) + 553.09619;
+            const bmi3 = max0_3(bmi-25.29) - 0.68347530*max0_3(bmi-16) - 0.31652470*max0_3(bmi-45.35) + 498.25349;
+            const bmi4 = max0_3(bmi-30.18) - 0.51686542*max0_3(bmi-16) - 0.48313458*max0_3(bmi-45.35) + 376.79489;
+            const b_bmi = [5.392e-02, 4.271e-04, 3.236e-04, -4.602e-04];
 
-// Diagnosis coefficients (same order as Vb_noAMH_names)
-const b_diag = [1.182e-01, 1.963e-01, 3.630e-01, -7.621e-02, 2.047e-01, -7.205e-01];
-const diag_vals = [prevBirth, maleFactor, pcos, uterine, unexplained, dor];
+            const b_diag = [1.106e-01, 2.007e-01, 3.569e-01, -6.424e-02, 1.852e-01, -6.901e-01];
+            const diag_vals = [prevBirth, maleFactor, pcos, uterine, unexplained, dor];
 
-// Linear predictor for Cycle 1
-xb = intercept 
-    + (b_age[0]*age1 + b_age[1]*age2 + b_age[2]*age3 + b_age[3]*age4)
-    + (b_bmi[0]*bmi1 + b_bmi[1]*bmi2 + b_bmi[2]*bmi3 + b_bmi[3]*bmi4);
-for(let i=0; i<b_diag.length; i++) xb += b_diag[i] * diag_vals[i];
+            xb = intercept 
+                + (b_age[0]*age1 + b_age[1]*age2 + b_age[2]*age3 + b_age[3]*age4)
+                + (b_bmi[0]*bmi1 + b_bmi[1]*bmi2 + b_bmi[2]*bmi3 + b_bmi[3]*bmi4);
+            for(let i=0; i<b_diag.length; i++) xb += b_diag[i] * diag_vals[i];
 
-// Build design vectors to use the full covariance matrix Vb_noAMH
-// Order: (Intercept), Cycle2, Cycle3, age1, age2, age3, age4, bmi1..bmi4, PrevTermBirths..., MaleInfertility, Polycpcos, Uterine, Unexplained, DiminishedOvarianReserve
-const xbase = [1, 0, 0, age1, age2, age3, age4, bmi1, bmi2, bmi3, bmi4,
-               prevBirth, maleFactor, pcos, uterine, unexplained, dor];
-const x2 = xbase.slice(); x2[1] = 1; // Cycle2 = 1
-const x3 = xbase.slice(); x3[2] = 1; // Cycle3 = 1
+            // Construct X vectors for Matrix Method
+            const xbase = [1, 0, 0, age1, age2, age3, age4, bmi1, bmi2, bmi3, bmi4,
+                        prevBirth, maleFactor, pcos, uterine, unexplained, dor];
+            
+            const x2 = xbase.slice(); x2[1] = 1; // Cycle2 = 1
+            const x3 = xbase.slice(); x3[2] = 1; // Cycle3 = 1
 
-variance1 = quadForm(xbase, Vb_noAMH);
-variance2 = quadForm(x2,    Vb_noAMH);
-variance3 = quadForm(x3,    Vb_noAMH);
-
-// Covariance matrix of (eta1, eta2, eta3) for cumulative CI via multivariate delta method
-varEtaMat = mat3([xbase, x2, x3], Vb_noAMH);
+            Veta = mat3([xbase, x2, x3], Vb_noAMH);
+            
+            // Set debug variables
+            debug_xbase = xbase;
+            debug_Vb = Vb_noAMH;
 
         } else {
-            const intercept = 7.555e-01; const intercept_se = 1.885e-02;
-            c2_beta = -6.547e-01; const c2_se = 9.656e-03;
-            c3_beta = -9.874e-01; const c3_se = 1.718e-02;
+            const intercept = 7.555e-01;
+            c2_beta = -6.547e-01;
+            c3_beta = -9.874e-01;
 
             const age1 = age - 25;
             const age2 = max0_3(age-32) - 0.5625*max0_3(age-18) - 0.4375*max0_3(age-50) + 192.9375;
             const age3 = max0_3(age-35) - 0.46875*max0_3(age-18) - 0.53125*max0_3(age-50) + 160.78125;
             const age4 = max0_3(age-39) - 0.34375*max0_3(age-18) - 0.65625*max0_3(age-50) + 117.90625;
             const b_age = [6.418e-02, 9.193e-04, -3.705e-03, 4.152e-03];
-            const se_age = [7.487e-03, 2.244e-04, 4.143e-04, 2.562e-04];
 
             const bmi1 = bmi - 25;
             const bmi2 = max0_3(bmi-22.26) - 0.78671210*max0_3(bmi-16) - 0.21328790*max0_3(bmi-45.35) + 552.94229;
             const bmi3 = max0_3(bmi-25.33) - 0.68211244*max0_3(bmi-16) - 0.31788756*max0_3(bmi-45.35) + 497.25997;
             const bmi4 = max0_3(bmi-30.18) - 0.51686542*max0_3(bmi-16) - 0.48313458*max0_3(bmi-45.35) + 376.79489;
             const b_bmi = [6.921e-02, 8.464e-04, -9.425e-05, -3.618e-04];
-            const se_bmi = [7.707e-03, 2.836e-04, 2.852e-04, 7.547e-05];
 
             const amh1 = amhVal - 2.5;
             const amh2 = max0_3(amhVal-0.99) - 0.94154942*max0_3(amhVal-0.01) - 0.05845058*max0_3(amhVal-16.7763) + 11.092923;
             const amh3 = max0_3(amhVal-2.06) - 0.87773092*max0_3(amhVal-0.01) - 0.12226908*max0_3(amhVal-16.7763) + 13.465445;
             const amh4 = max0_3(amhVal-4.00) - 0.76202263*max0_3(amhVal-0.01) - 0.23797737*max0_3(amhVal-16.7763) + 11.764295;
             const b_amh = [1.462e+00, 3.442e-01, -1.450e-01, -8.764e-03];
-            const se_amh = [2.832e-02, 1.425e-02, 8.697e-03, 1.158e-03];
 
             const b_diag = [1.260e-01, 1.384e-01, 4.907e-02, -1.177e-01, 1.779e-01, -9.855e-02];
-            const se_diag = [9.000e-03, 7.633e-03, 1.264e-02, 1.515e-02, 1.111e-02, 1.063e-02];
             const diag_vals = [prevBirth, maleFactor, pcos, uterine, unexplained, dor];
 
             xb = intercept 
@@ -366,101 +399,106 @@ varEtaMat = mat3([xbase, x2, x3], Vb_noAMH);
                 + (b_amh[0]*amh1 + b_amh[1]*amh2 + b_amh[2]*amh3 + b_amh[3]*amh4);
             for(let i=0; i<b_diag.length; i++) xb += b_diag[i] * diag_vals[i];
 
-            let variance = Math.pow(intercept_se, 2)
-                + Math.pow(age1*se_age[0], 2) + Math.pow(age2*se_age[1], 2) + Math.pow(age3*se_age[2], 2) + Math.pow(age4*se_age[3], 2)
-                + Math.pow(bmi1*se_bmi[0], 2) + Math.pow(bmi2*se_bmi[1], 2) + Math.pow(bmi3*se_bmi[2], 2) + Math.pow(bmi4*se_bmi[3], 2)
-                + Math.pow(amh1*se_amh[0], 2) + Math.pow(amh2*se_amh[1], 2) + Math.pow(amh3*se_amh[2], 2) + Math.pow(amh4*se_amh[3], 2);
-            for(let i=0; i<se_diag.length; i++) variance += Math.pow(diag_vals[i]*se_diag[i], 2);
-        }
-        if (hasAmh) {
-            variance1 = variance;
-            variance2 = variance + Math.pow(c2_se, 2);
-            variance3 = variance + Math.pow(c3_se, 2);
-            varEtaMat = null;
+            const xbase = [1, 0, 0, 
+                           age1, age2, age3, age4, 
+                           bmi1, bmi2, bmi3, bmi4, 
+                           amh1, amh2, amh3, amh4,
+                           prevBirth, maleFactor, pcos, uterine, unexplained, dor];
+            
+            const x2 = xbase.slice(); x2[1] = 1; // Cycle2 = 1
+            const x3 = xbase.slice(); x3[2] = 1; // Cycle3 = 1
+
+            Veta = mat3([xbase, x2, x3], Vb_withAMH);
+            
+            // Set debug variables
+            debug_xbase = xbase;
+            debug_Vb = Vb_withAMH;
         }
 
         const eta1 = xb;
-const eta2 = xb + c2_beta;
-const eta3 = xb + c3_beta;
+        const eta2 = xb + c2_beta;
+        const eta3 = xb + c3_beta;
 
-const p1 = getProbWithCI(eta1, variance1);
-const p2 = getProbWithCI(eta2, variance2);
-const p3 = getProbWithCI(eta3, variance3);
+        const p1 = invlogit(eta1);
+        const p2 = invlogit(eta2);
+        const p3 = invlogit(eta3);
 
-let cum1_est, cum1_low, cum1_high;
-let cum2_est, cum2_low, cum2_high;
-let cum3_est, cum3_low, cum3_high;
+        const var_eta1 = Veta[0][0];
+        const ci1 = logitCI_eta(eta1, var_eta1);
 
-// Cumulative estimates
-cum1_est = p1.est;
-cum2_est = 1 - ((1 - p1.est) * (1 - p2.est));
-cum3_est = 1 - ((1 - p1.est) * (1 - p2.est) * (1 - p3.est));
+        const CP1 = p1;
+        const CP2 = 1 - (1 - p1) * (1 - p2);
+        const CP3 = 1 - (1 - p1) * (1 - p2) * (1 - p3);
 
-// If we have the full covariance of (eta1,eta2,eta3), compute CI via multivariate delta method (recommended)
-if (!hasAmh && varEtaMat) {
-    const dp1 = p1.est * (1 - p1.est);
-    const dp2 = p2.est * (1 - p2.est);
-    const dp3 = p3.est * (1 - p3.est);
+        const d1 = p1 * (1 - p1);
+        const d2 = p2 * (1 - p2);
+        const d3 = p3 * (1 - p3);
 
-    // gradients wrt (eta1, eta2, eta3)
-    const g1 = [dp1, 0, 0];
-    const g2 = [dp1 * (1 - p2.est), dp2 * (1 - p1.est), 0];
-    const g3 = [
-        dp1 * (1 - p2.est) * (1 - p3.est),
-        dp2 * (1 - p1.est) * (1 - p3.est),
-        dp3 * (1 - p1.est) * (1 - p2.est)
-    ];
+        const grad_CP2 = [d1 * (1 - p2), d2 * (1 - p1), 0];
 
-    function quad3(g, M) {
-        // g' M g for 3x3
-        return g[0]*(M[0][0]*g[0] + M[0][1]*g[1] + M[0][2]*g[2]) +
-               g[1]*(M[1][0]*g[0] + M[1][1]*g[1] + M[1][2]*g[2]) +
-               g[2]*(M[2][0]*g[0] + M[2][1]*g[1] + M[2][2]*g[2]);
-    }
+        const grad_CP3 = [
+            d1 * (1 - p2) * (1 - p3),
+            d2 * (1 - p1) * (1 - p3),
+            d3 * (1 - p1) * (1 - p2)
+        ];
 
-    const varCum1 = quad3(g1, varEtaMat);
-    const varCum2 = quad3(g2, varEtaMat);
-    const varCum3 = quad3(g3, varEtaMat);
+        function quad3(g, M) {
+            return g[0]*(M[0][0]*g[0] + M[0][1]*g[1] + M[0][2]*g[2]) +
+                   g[1]*(M[1][0]*g[0] + M[1][1]*g[1] + M[1][2]*g[2]) +
+                   g[2]*(M[2][0]*g[0] + M[2][1]*g[1] + M[2][2]*g[2]);
+        }
+        
+        const var_CP2 = quad3(grad_CP2, Veta);
+        const var_CP3 = quad3(grad_CP3, Veta);
+        const var_CP1_derived = Math.pow(d1, 2) * var_eta1;
 
-    function logitCI(prob, varProb) {
-        const eps = 1e-12;
-        const p = Math.min(Math.max(prob, eps), 1 - eps);
-        const se_logit = Math.sqrt(Math.max(varProb, 0)) / (p * (1 - p));
-        const L = logit(p) - 1.96 * se_logit;
-        const U = logit(p) + 1.96 * se_logit;
-        return { low: invlogit(L), high: invlogit(U) };
-    }
+        const ci2 = logitCI_prob(CP2, var_CP2);
+        const ci3 = logitCI_prob(CP3, var_CP3);
 
-    const ci1 = logitCI(cum1_est, varCum1);
-    const ci2 = logitCI(cum2_est, varCum2);
-    const ci3 = logitCI(cum3_est, varCum3);
+        document.getElementById('res1').innerText = (p1 * 100).toFixed(1) + "%";
+        document.getElementById('ci1').innerText = `(${ (ci1.low*100).toFixed(1) }% - ${ (ci1.high*100).toFixed(1) }%)`;
 
-    cum1_low = ci1.low; cum1_high = ci1.high;
-    cum2_low = ci2.low; cum2_high = ci2.high;
-    cum3_low = ci3.low; cum3_high = ci3.high;
+        document.getElementById('res2').innerText = (CP2 * 100).toFixed(1) + "%";
+        document.getElementById('ci2').innerText = `(${ (ci2.low*100).toFixed(1) }% - ${ (ci2.high*100).toFixed(1) }%)`;
 
-} else {
-    // Fallback: combine per-cycle logit CIs (assumes independence; kept for hasAmh==yes path)
-    cum1_low = p1.low;
-    cum1_high = p1.high;
+        document.getElementById('res3').innerText = (CP3 * 100).toFixed(1) + "%";
+        document.getElementById('ci3').innerText = `(${ (ci3.low*100).toFixed(1) }% - ${ (ci3.high*100).toFixed(1) }%)`;
 
-    cum2_low = 1 - ((1 - p1.low) * (1 - p2.low));
-    cum2_high = 1 - ((1 - p1.high) * (1 - p2.high));
+        // DEBUG OUTPUT GENERATION
+        // let debugHtml = "";
 
-    cum3_low = 1 - ((1 - p1.low) * (1 - p2.low) * (1 - p3.low));
-    cum3_high = 1 - ((1 - p1.high) * (1 - p2.high) * (1 - p3.high));
-}
+        // // xbase Output
+        // debugHtml += `<div class='debug-block'><span class='debug-label'>xbase Vector (Length: ${debug_xbase.length}):</span>`;
+        // debugHtml += `<div class='vector-box'>[${debug_xbase.map(v => v.toFixed(4)).join(", ")}]</div></div>`;
 
-document.getElementById('res1').innerText = (cum1_est * 100).toFixed(1) + "%";
-        /*document.getElementById('ci1').innerText = `(${ (cum1_low*100).toFixed(1) }% - ${ (cum1_high*100).toFixed(1) }%)`;*/
+        // // Intermediate values
+        // debugHtml += `<div class='debug-block'><span class='debug-label'>Linear Predictors (&eta;):</span> [${eta1.toFixed(5)}, ${eta2.toFixed(5)}, ${eta3.toFixed(5)}]</div>`;
+        // debugHtml += `<div class='debug-block'><span class='debug-label'>Var(CP):</span> [CP1: ${var_CP1_derived.toExponential(5)}, CP2: ${var_CP2.toExponential(5)}, CP3: ${var_CP3.toExponential(5)}]</div>`;
 
-        document.getElementById('res2').innerText = (cum2_est * 100).toFixed(1) + "%";
-        /*document.getElementById('ci2').innerText = `(${ (cum2_low*100).toFixed(1) }% - ${ (cum2_high*100).toFixed(1) }%)`;*/
+        // // Vb Matrix Output
+        // debugHtml += `<div class='debug-block'><span class='debug-label'>Active Vb Matrix (Size: ${debug_Vb.length}x${debug_Vb.length}):</span>`;
+        // debugHtml += `<div class='matrix-container'><table class='matrix-table'>`;
+        // for(let i=0; i<debug_Vb.length; i++) {
+        //     debugHtml += `<tr>`;
+        //     for(let j=0; j<debug_Vb[i].length; j++) {
+        //         debugHtml += `<td>${debug_Vb[i][j].toExponential(4)}</td>`;
+        //     }
+        //     debugHtml += `</tr>`;
+        // }
+        // debugHtml += `</table></div></div>`;
 
-        document.getElementById('res3').innerText = (cum3_est * 100).toFixed(1) + "%";
-        /*document.getElementById('ci3').innerText = `(${ (cum3_low*100).toFixed(1) }% - ${ (cum3_high*100).toFixed(1) }%)`;*/
+        // // Veta Matrix Output
+        // debugHtml += `<div class='debug-block'><span class='debug-label'>Veta (Covariance of &eta;):</span>`;
+        // debugHtml += `<div class='matrix-container'><table class='matrix-table'>`;
+        // for(let i=0; i<3; i++) {
+        //     debugHtml += `<tr>`;
+        //     for(let j=0; j<3; j++) debugHtml += `<td>${Veta[i][j].toExponential(4)}</td>`;
+        //     debugHtml += `</tr>`;
+        // }
+        // debugHtml += `</table></div></div>`;
 
-        document.getElementById('results').style.display = 'block';
+        // document.getElementById('debug-content').innerHTML = debugHtml;
+        // document.getElementById('results').style.display = 'block';
     }
 </script>
 

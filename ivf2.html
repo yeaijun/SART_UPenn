@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SART IVF Post-treatment Predictor (Fixed)</title>
+    <title>SART IVF Post-treatment Predictor (Updated Coeffs)</title>
     <style>
         body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; background-color: #f4f7f6; color: #333; padding: 20px; }
         .container { max-width: 700px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -14,8 +14,8 @@
         input[type="number"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .checkbox-group label { font-weight: normal; display: flex; align-items: center; cursor: pointer; }
         .checkbox-group input { margin-right: 10px; width: auto; }
-        .btn { display: block; width: 100%; background: #17a2b8; color: white; border: none; padding: 15px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-top: 20px; }
-        .btn:hover { background: #138496; }
+        .btn { display: block; width: 100%; background: #28a745; color: white; border: none; padding: 15px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-top: 20px; }
+        .btn:hover { background: #218838; }
         .switch-link { color: #007bff; cursor: pointer; font-weight: normal; font-size: 0.9em; margin-left: 10px; text-decoration: underline; }
         .switch-link:hover { color: #0056b3; }
         .height-container { display: flex; gap: 10px; }
@@ -29,13 +29,12 @@
 <body>
 
 <div class="container">
-    <h2>Post-treatment Prediction Model <span style="color: #007bff;"> (UPenn) </span></h2>
-    <p>Predicts the cumulative probability of live birth over the second and third complete cycles (with 95% Confidence Intervals).</p>
-    <p class="sub-label"><em>Note: Use this only if your first complete cycle did not result in a live birth.</em></p>
+    <h2>Post-treatment Prediction Model <span style="color: #007bff;">(UPenn)</span></h2>
+    <p>Predicts the cumulative probability of live birth for Cycle 2 and Cycle 3, given that Cycle 1 failed.</p>
 
-    <form id="ivfFormPost">
+    <form id="ivfForm">
         <div class="form-group">
-            <label>Current Age (18-50)</label>
+            <label>What age are you? (18 to 50 years)</label>
             <input type="number" id="age" min="18" max="50" required>
         </div>
 
@@ -73,9 +72,8 @@
         </div>
 
         <div class="form-group">
-            <label>Eggs collected in first IVF cycle (0-29)</label>
-            <input type="number" id="eggs" min="0" max="29" required>
-            <div class="sub-label">Values > 29 will be set to 29.</div>
+            <label>Number of Oocytes Retrieved in Cycle 1:</label>
+            <input type="number" id="oocytes" min="0" required>
         </div>
 
         <div class="form-group checkbox-group"><label><input type="checkbox" id="maleFactor" value="1"> Male Factor Infertility</label></div>
@@ -83,11 +81,11 @@
         <div class="form-group checkbox-group"><label><input type="checkbox" id="uterine" value="1"> Uterine Problems (septum, myoma, adhesions)</label></div>
         <div class="form-group checkbox-group"><label><input type="checkbox" id="dor" value="1"> Diminished Ovarian Reserve</label></div>
 
-        <button type="button" class="btn" onclick="calculatePost()">Calculate Probability</button>
+        <button type="button" class="btn" onclick="calculate()">Calculate Probability</button>
     </form>
 
     <div id="results">
-        <h3>Cumulative Chance of Live Birth:</h3>
+        <h3>Cumulative Chance of Live Birth (Given Cycle 1 Failed):</h3>
         <div class="result-row">
             <span>After Cycle 2:</span>
             <div style="text-align:right">
@@ -102,16 +100,67 @@
                 <span id="ci3" class="ci-text"></span>
             </div>
         </div>
-        <p style="font-size: 0.9em; color: #555; margin-top: 15px;">
-            This assumes you are starting your second complete cycle. Cycle 1 is already complete.
-        </p>
         <div style="margin-top: 20px; text-align: center;">
-            <a href="ivf1.html" style="color: #007bff;">Back to Pre-treatment tool</a>
+            <a href="ivf1_updated_0202.html" style="color: #007bff;">Back to Pre-treatment Tool</a>
         </div>
     </div>
 </div>
 
 <script>
+    // Vb_post (18x18) from uploaded CSV
+    const Vb_post = [[0.0019223541245567, -4.47159899520493e-05, -0.0004175774339877, -7.00728568772099e-06, 1.77996144923005e-05, -1.24150849387551e-05, 8.38657421360893e-06, -1.64952731202294e-06, 2.27889823308922e-06, -8.7913623727631e-07, -4.83964577418384e-05, -7.41802200049364e-06, 4.16856779427356e-06, -9.42963164667123e-07, -0.000103613482266, -0.0001139186620723, -2.62873308189388e-05, -4.3346215400734e-05], [-4.47159899520493e-05, 0.0002733566603602, -1.25620358386995e-06, -2.08014725274457e-09, 7.66608732188883e-08, -8.86008245900816e-08, 2.46722086672959e-07, -2.58417923816435e-09, 1.89523107759474e-09, 6.41673456899576e-10, -2.43410165150708e-06, -1.85646766954791e-07, 7.03795713570465e-08, -3.08453274397929e-09, 1.56383943515246e-06, 5.9148440446506e-06, 1.41955602516192e-06, -5.63634395387539e-06], [-0.0004175774339877, -1.25620358386995e-06, 0.000133168018417, 3.14150408790678e-06, -9.19035098272327e-06, 6.82856429572981e-06, -1.78754690917462e-06, -6.46556238607118e-08, 5.42554463723854e-08, -7.61999026319327e-09, -1.50700826628162e-06, -5.80331338045416e-08, 1.84517080597736e-08, -4.98486230086836e-10, 2.77659281117505e-06, 9.03178808464827e-06, -1.37981472927026e-07, -4.7963948635965e-07], [-7.00728568772099e-06, -2.08014725274457e-09, 3.14150408790678e-06, 1.27638761001776e-07, -4.87986088000279e-07, 4.04711604624364e-07, -3.29470262954239e-08, -8.998169400351481e-10, 6.84840856056631e-10, -6.454026572960539e-11, -3.92684780581114e-09, -6.22675477790239e-11, 1.29844399547848e-10, -8.388439105413739e-11, 4.31110713623559e-08, -1.44923529653745e-08, 1.07067564361678e-07, -4.4021077974195e-08], [1.77996144923005e-05, 7.66608732188883e-08, -9.19035098272327e-06, -4.87986088000279e-07, 2.24832692413712e-06, -1.99065650458843e-06, 1.13693382376127e-07, 2.1640325527305803e-09, -1.4301519128572101e-09, 3.24056609718863e-11, 2.19530692450277e-08, -9.25127003422029e-10, 3.36482689881628e-10, 6.03953874889795e-11, -1.54527987831862e-07, 5.155486809759481e-09, -3.81619285585314e-07, 1.92367402895023e-07], [-1.24150849387551e-05, -8.86008245900816e-08, 6.82856429572981e-06, 4.04711604624364e-07, -1.99065650458843e-06, 1.79752027855138e-06, -9.21593029441569e-08, -1.50224288539563e-09, 9.180018750388581e-10, 1.8210052530526e-11, -2.3191014257576e-08, 1.14072981056239e-09, -5.91141343706029e-10, 5.7662568363006e-11, 1.2506316845616e-07, 3.25682919921462e-08, 3.04970602427269e-07, -1.4317712272008e-07], [8.38657421360893e-06, 2.46722086672959e-07, -1.78754690917462e-06, -3.29470262954239e-08, 1.13693382376127e-07, -9.21593029441569e-08, 0.0001889164893207, 6.28036116630783e-06, -5.65349244626051e-06, 1.05420239517625e-06, 4.3057514398447e-07, 1.93403707448313e-08, -5.2755165944773205e-09, -8.95201539619746e-10, -9.22072848164221e-07, -1.4978648784484e-06, -1.14827471201613e-06, 3.17464056511605e-07], [-1.64952731202294e-06, -2.58417923816435e-09, -6.46556238607118e-08, -8.998169400351481e-10, 2.1640325527305803e-09, -1.50224288539563e-09, 6.28036116630783e-06, 2.61303623123713e-07, -2.55046830968116e-07, 5.88036448443818e-08, -1.48984640664824e-08, -1.4966988969332902e-09, 7.63071958348047e-10, -1.49174785385037e-10, 2.55768982379886e-08, -2.28196490708564e-07, 3.79295303676572e-08, 2.05910840855525e-08], [2.27889823308922e-06, 1.89523107759474e-09, 5.42554463723854e-08, 6.84840856056631e-10, -1.4301519128572101e-09, 9.180018750388581e-10, -5.65349244626051e-06, -2.55046830968116e-07, 2.5612755347495e-07, -6.30577464936353e-08, 1.70609524076333e-08, 1.8343460591887803e-09, -9.34302876883349e-10, 1.7900634426636402e-10, -3.10871026225389e-08, 3.35682117051612e-07, -3.60740697300497e-08, -3.47223304356875e-08], [-8.7913623727631e-07, 6.41673456899576e-10, -7.61999026319327e-09, -6.454026572960539e-11, 3.24056609718863e-11, 1.8210052530526e-11, 1.05420239517625e-06, 5.88036448443818e-08, -6.30577464936353e-08, 1.77435454385581e-08, -3.9922090163819e-09, -5.59127530565678e-10, 2.93774520611084e-10, -5.7832997555384e-11, 9.0287486713617e-09, -1.36361641653437e-07, 3.3587510705394403e-09, 1.73846452059074e-08], [-4.83964577418384e-05, -2.43410165150708e-06, -1.50700826628162e-06, -3.92684780581114e-09, 2.19530692450277e-08, -2.3191014257576e-08, 4.3057514398447e-07, -1.48984640664824e-08, 1.70609524076333e-08, -3.9922090163819e-09, 0.0001974529546171, 1.56962345860683e-05, -7.28652504175048e-06, 1.11783388391728e-06, -1.67523797604765e-06, 6.55572360512409e-06, -2.61839506165239e-06, -1.75344548138256e-05], [-7.41802200049364e-06, -1.85646766954791e-07, -5.80331338045416e-08, -6.22675477790239e-11, -9.25127003422029e-10, 1.14072981056239e-09, 1.93403707448313e-08, -1.4966988969332902e-09, 1.8343460591887803e-09, -5.59127530565678e-10, 1.56962345860683e-05, 1.39044555494244e-06, -6.7806377071808e-07, 1.19077991931699e-07, 3.37651921281888e-08, 3.00292496512695e-07, -1.3520810459764e-07, -1.61940719113386e-06], [4.16856779427356e-06, 7.03795713570465e-08, 1.84517080597736e-08, 1.29844399547848e-10, 3.36482689881628e-10, -5.91141343706029e-10, -5.2755165944773205e-09, 7.63071958348047e-10, -9.34302876883349e-10, 2.93774520611084e-10, -7.28652504175048e-06, -6.7806377071808e-07, 3.39088357459397e-07, -6.35497447718156e-08, -3.35027187533759e-08, -1.09026455327242e-07, 5.86065080751471e-08, 6.73365813790122e-07], [-9.42963164667123e-07, -3.08453274397929e-09, -4.98486230086836e-10, -8.388439105413739e-11, 6.03953874889795e-11, 5.7662568363006e-11, -8.95201539619746e-10, -1.49174785385037e-10, 1.7900634426636402e-10, -5.7832997555384e-11, 1.11783388391728e-06, 1.19077991931699e-07, -6.35497447718156e-08, 1.38135341037108e-08, 1.09567561800556e-08, 1.75596423359876e-08, -8.8015472769873e-09, -5.56661127927673e-08], [-0.000103613482266, 1.56383943515246e-06, 2.77659281117505e-06, 4.31110713623559e-08, -1.54527987831862e-07, 1.2506316845616e-07, -9.22072848164221e-07, 2.55768982379886e-08, -3.10871026225389e-08, 9.0287486713617e-09, -1.67523797604765e-06, 3.37651921281888e-08, -3.35027187533759e-08, 1.09567561800556e-08, 0.0001897810472369, 1.1670981150613e-05, -5.88699068366715e-06, 2.29199493641636e-06], [-0.0001139186620723, 5.9148440446506e-06, 9.03178808464827e-06, -1.44923529653745e-08, 5.155486809759481e-09, 3.25682919921462e-08, -1.4978648784484e-06, -2.28196490708564e-07, 3.35682117051612e-07, -1.36361641653437e-07, 6.55572360512409e-06, 3.00292496512695e-07, -1.09026455327242e-07, 1.75596423359876e-08, 1.1670981150613e-05, 0.0005878764218338, 4.11734036615484e-06, 4.37239180566304e-05], [-2.62873308189388e-05, 1.41955602516192e-06, -1.37981472927026e-07, 1.07067564361678e-07, -3.81619285585314e-07, 3.04970602427269e-07, -1.14827471201613e-06, 3.79295303676572e-08, -3.60740697300497e-08, 3.3587510705394403e-09, -2.61839506165239e-06, -1.3520810459764e-07, 5.86065080751471e-08, -8.8015472769873e-09, -5.88699068366715e-06, 4.11734036615484e-06, 0.0007940340545099, -1.54948925226136e-06], [-4.3346215400734e-05, -5.63634395387539e-06, -4.7963948635965e-07, -4.4021077974195e-08, 1.92367402895023e-07, -1.4317712272008e-07, 3.17464056511605e-07, 2.05910840855525e-08, -3.47223304356875e-08, 1.73846452059074e-08, -1.75344548138256e-05, -1.61940719113386e-06, 6.73365813790122e-07, -5.56661127927673e-08, 2.29199493641636e-06, 4.37239180566304e-05, -1.54948925226136e-06, 0.0002475129015373]];
+
+    function quadForm(x, V) {
+        let s = 0;
+        for (let i=0; i<x.length; i++) {
+            let rowSum = 0;
+            for (let j=0; j<x.length; j++) rowSum += V[i][j] * x[j];
+            s += x[i] * rowSum;
+        }
+        return s;
+    }
+    
+    // Matrix multiplication: A (2xp) * V (pxp) => M (2xp), then M * A' => (2x2)
+    function mat2(A, V) {
+        const p = A[0].length;
+        const M = [new Array(p).fill(0), new Array(p).fill(0)];
+        for (let r=0; r<2; r++) {
+            for (let j=0; j<p; j++) {
+                let s = 0;
+                for (let k=0; k<p; k++) s += A[r][k] * V[k][j];
+                M[r][j] = s;
+            }
+        }
+        const R = [[0,0],[0,0]];
+        for (let r=0; r<2; r++) {
+            for (let c=0; c<2; c++) {
+                let s = 0;
+                for (let k=0; k<p; k++) s += M[r][k] * A[c][k];
+                R[r][c] = s;
+            }
+        }
+        return R;
+    }
+
+    function logit(p) { return Math.log(p/(1-p)); }
+    function invlogit(z) { return 1/(1+Math.exp(-z)); }
+
+    function logitCI_prob(p, var_p) {
+        const eps = 1e-12;
+        const prob = Math.min(Math.max(p, eps), 1 - eps);
+        const se_logit = Math.sqrt(Math.max(var_p, 0)) / (prob * (1 - prob));
+        const L = logit(prob) - 1.96 * se_logit;
+        const U = logit(prob) + 1.96 * se_logit;
+        return { low: invlogit(L), high: invlogit(U) };
+    }
+
+    function logitCI_eta(eta, var_eta) {
+        const se = Math.sqrt(Math.max(var_eta, 0));
+        const L = eta - 1.96 * se;
+        const U = eta + 1.96 * se;
+        return { low: invlogit(L), high: invlogit(U) };
+    }
+
     let isHeightUS = true;
     let isWeightUS = true;
 
@@ -155,6 +204,7 @@
         let heightInches = 0;
         let weightLbs = 0;
         let bmi = 0;
+        
         if (isHeightUS) {
             const ft = parseFloat(document.getElementById('heightFt').value) || 0;
             const inch = parseFloat(document.getElementById('heightIn').value) || 0;
@@ -163,16 +213,18 @@
             const cm = parseFloat(document.getElementById('heightCm').value) || 0;
             heightInches = cm / 2.54;
         }
+        
         if (isWeightUS) {
             weightLbs = parseFloat(document.getElementById('weightLb').value) || 0;
         } else {
             const kg = parseFloat(document.getElementById('weightKg').value) || 0;
             weightLbs = kg * 2.20462;
         }
-        
+
         if (heightInches > 0 && weightLbs > 0) {
             bmi = (weightLbs / (heightInches * heightInches)) * 703;
         }
+        
         return bmi;
     }
 
@@ -184,96 +236,131 @@
 
     function max0_3(val) { return Math.pow(Math.max(val, 0), 3); }
 
-    function getProbWithCI(linearPred, variance) {
-        if (!isFinite(linearPred) || !isFinite(variance)) return { est: 0, low: 0, high: 0 };
-        const se = Math.sqrt(variance);
-        const est = Math.exp(linearPred) / (1 + Math.exp(linearPred));
-        const lowLP = linearPred - (1.96 * se);
-        const highLP = linearPred + (1.96 * se);
-        const low = Math.exp(lowLP) / (1 + Math.exp(lowLP));
-        const high = Math.exp(highLP) / (1 + Math.exp(highLP));
-        return { est: est, low: low, high: high };
-    }
-
-    function calculatePost() {
+    function calculate() {
         var age = parseFloat(document.getElementById('age').value);
         var bmi = getCalculatedBMI();
-        var eggs = parseFloat(document.getElementById('eggs').value);
-        
+        var eggs = parseFloat(document.getElementById('oocytes').value);
+
         if (isNaN(age) || age < 18 || age > 50) { alert("Please enter valid age (18-50)"); return; }
-        if (isNaN(bmi) || !isFinite(bmi) || bmi <= 0) { 
-            alert("Please check your Height and Weight inputs. Height must be greater than 0."); 
-            return; 
-        }
-        if (isNaN(eggs)) { alert("Please enter egg count"); return; }
-        
+        if (isNaN(bmi) || !isFinite(bmi) || bmi <= 0) { alert("Please check Height/Weight."); return; }
         if (bmi < 16) bmi = 16; if (bmi > 50) bmi = 50;
-        if (eggs > 29) eggs = 29; if (eggs < 0) eggs = 0;
+        if (isNaN(eggs) || eggs < 0) { alert("Please enter number of oocytes."); return; }
+        
+        // Capping oocytes at 29 as described in the model text
+        var eggs_calc = (eggs > 29) ? 29 : eggs;
 
         var maleFactor = document.getElementById('maleFactor').checked ? 1 : 0;
         var pcos = document.getElementById('pcos').checked ? 1 : 0;
         var uterine = document.getElementById('uterine').checked ? 1 : 0;
-        var dor = document.getElementById('dor').checked ? 1 : 0;
+        var dor = document.getElementById('dor').checked ? 1 : 0; 
 
-        const intercept = -6.028e-02; const intercept_se = 4.384e-02;
-        const c3_beta = -3.979e-01; const c3_se = 1.653e-02;
+        // UPDATED COEFFICIENTS (from user request)
+        const intercept = -0.06028458;
+        const c3_beta = -0.3979445;
 
-        var age1 = age - 25;
-        var age2 = max0_3(age-34) - 0.5333333333*max0_3(age-20) - 0.4666666667*max0_3(age-50) + 66.6666666667;
-        var age3 = max0_3(age-38) - 0.4000000000*max0_3(age-20) - 0.6000000000*max0_3(age-50) + 50.0000000000;
-        var age4 = max0_3(age-40) - 0.3333333333*max0_3(age-20) - 0.6666666667*max0_3(age-50) + 41.6666666667;
-        const b_age = [4.064e-02, -1.171e-04, -6.646e-03, 8.751e-03];
-        const se_age = [1.154e-02, 3.573e-04, 1.499e-03, 1.341e-03];
-
-        var bmi1 = bmi - 25;
-        var bmi2 = max0_3(bmi-22.25) - 0.79533153*max0_3(bmi-16.2) - 0.20466847*max0_3(bmi-45.76) + 521.19929;
-        var bmi3 = max0_3(bmi-25.39) - 0.68910690*max0_3(bmi-16.2) - 0.31089310*max0_3(bmi-45.76) + 469.60706;
-        var bmi4 = max0_3(bmi-30.29) - 0.52334235*max0_3(bmi-16.2) - 0.47665765*max0_3(bmi-45.76) + 356.64316;
-        const b_bmi = [1.552e-02, -8.577e-05, 4.156e-04, -2.710e-04];
-        const se_bmi = [1.374e-02, 5.112e-04, 5.061e-04, 1.332e-04];
-
-        var retr1 = eggs - 9;
-        var retr2 = max0_3(eggs-2) - 0.93103448*max0_3(eggs-0) - 0.06896552*max0_3(eggs-29) + 335.72414;
-        var retr3 = max0_3(eggs-6) - 0.79310345*max0_3(eggs-0) - 0.20689655*max0_3(eggs-29) + 551.17241;
-        var retr4 = max0_3(eggs-12) - 0.58620690*max0_3(eggs-0) - 0.41379310*max0_3(eggs-29) + 427.34483;
-        const b_eggs = [-1.352e-01, -1.440e-02, 6.319e-03, -6.900e-04];
-        const se_eggs = [1.405e-02, 1.179e-03, 5.823e-04, 1.175e-04];
-
-        const b_diag = [1.550e-01, 1.816e-01, -8.944e-02, -3.351e-01];
-        const se_diag = [1.378e-02, 2.425e-02, 2.818e-02, 1.573e-02];
+        // Coefficients for splines
+        const b_age = [0.04063816, -0.0001171357, -0.006645815, 0.008750626];
+        const b_bmi = [0.01551828, -0.00008577236, 0.0004156533, -0.0002709971];
+        const b_eggs = [-0.1351948, -0.01440019, 0.006318674, -0.0006900034];
+        
+        // Diagnosis coefficients
+        // Male, PCOS, Uterine, DOR
+        const b_diag = [0.1549855, 0.1816277, -0.08943826, -0.3350657];
         const diag_vals = [maleFactor, pcos, uterine, dor];
 
+        // Updated Spline Terms (Knots at 34, 20, 50, 38, 40)
+        const age1 = age - 25;
+        const age2 = max0_3(age - 34) - 0.53333333 * max0_3(age - 20) - 0.46666667 * max0_3(age - 50) + 66.666667;
+        const age3 = max0_3(age - 38) - 0.40000000 * max0_3(age - 20) - 0.60000000 * max0_3(age - 50) + 50.000000;
+        const age4 = max0_3(age - 40) - 0.33333333 * max0_3(age - 20) - 0.66666667 * max0_3(age - 50) + 41.666667;
+
+        // Updated BMI Spline Terms (Knots at 22.25, 16.2, 45.76, 25.39, 30.29)
+        const bmi1 = bmi - 25;
+        const bmi2 = max0_3(bmi - 22.25) - 0.79533153 * max0_3(bmi - 16.2) - 0.20466847 * max0_3(bmi - 45.76) + 521.19929;
+        const bmi3 = max0_3(bmi - 25.39) - 0.68910690 * max0_3(bmi - 16.2) - 0.31089310 * max0_3(bmi - 45.76) + 469.60706;
+        const bmi4 = max0_3(bmi - 30.29) - 0.52334235 * max0_3(bmi - 16.2) - 0.47665765 * max0_3(bmi - 45.76) + 356.64316;
+
+        // Updated Retr Spline Terms (Knots at 2, 0, 29, 6, 12)
+        // Note: Using eggs_calc which is capped at 29
+        const retr1 = eggs_calc - 9;
+        const retr2 = max0_3(eggs_calc - 2) - 0.93103448 * max0_3(eggs_calc - 0) - 0.06896552 * max0_3(eggs_calc - 29) + 335.72414;
+        const retr3 = max0_3(eggs_calc - 6) - 0.79310345 * max0_3(eggs_calc - 0) - 0.20689655 * max0_3(eggs_calc - 29) + 551.17241;
+        const retr4 = max0_3(eggs_calc - 12) - 0.58620690 * max0_3(eggs_calc - 0) - 0.41379310 * max0_3(eggs_calc - 29) + 427.34483;
+
+        // Linear Predictor for Cycle 2
         let xb = intercept 
             + (b_age[0]*age1 + b_age[1]*age2 + b_age[2]*age3 + b_age[3]*age4)
             + (b_bmi[0]*bmi1 + b_bmi[1]*bmi2 + b_bmi[2]*bmi3 + b_bmi[3]*bmi4)
             + (b_eggs[0]*retr1 + b_eggs[1]*retr2 + b_eggs[2]*retr3 + b_eggs[3]*retr4);
         for(let i=0; i<b_diag.length; i++) xb += b_diag[i] * diag_vals[i];
 
-        let variance = Math.pow(intercept_se, 2)
-            + Math.pow(age1*se_age[0], 2) + Math.pow(age2*se_age[1], 2) + Math.pow(age3*se_age[2], 2) + Math.pow(age4*se_age[3], 2)
-            + Math.pow(bmi1*se_bmi[0], 2) + Math.pow(bmi2*se_bmi[1], 2) + Math.pow(bmi3*se_bmi[2], 2) + Math.pow(bmi4*se_bmi[3], 2)
-            + Math.pow(retr1*se_eggs[0], 2) + Math.pow(retr2*se_eggs[1], 2) + Math.pow(retr3*se_eggs[2], 2) + Math.pow(retr4*se_eggs[3], 2);
-        for(let i=0; i<se_diag.length; i++) variance += Math.pow(diag_vals[i]*se_diag[i], 2);
+        // X Vectors for Matrix Multiplication (Length 18)
+        // Order based on CSV: (Intercept), Cycle3, age1..4, bmi1..4, Retr1..4, Male, PCOS, Uterine, DOR
+        const x2 = [1, 0, 
+                    age1, age2, age3, age4,
+                    bmi1, bmi2, bmi3, bmi4,
+                    retr1, retr2, retr3, retr4,
+                    maleFactor, pcos, uterine, dor];
+        
+        const x3 = x2.slice(); x3[1] = 1; // Set Cycle3 = 1
 
-        const p2 = getProbWithCI(xb, variance);
+        // Covariance Matrix of Linear Predictors (Veta) for (eta2, eta3)
+        // Veta will be 2x2
+        const Veta = mat2([x2, x3], Vb_post);
 
-        const xb3 = xb + c3_beta;
-        const var3 = variance + Math.pow(c3_se, 2);
-        const p3 = getProbWithCI(xb3, var3);
+        const eta2 = xb;
+        const eta3 = xb + c3_beta;
 
-        const cum2_est = 1 - (1 - p2.est);
-        const cum2_low = 1 - (1 - p2.low);
-        const cum2_high = 1 - (1 - p2.high);
+        // Probabilities
+        const p2 = invlogit(eta2);
+        const p3 = invlogit(eta3);
 
-        const cum3_est = 1 - ((1 - p2.est) * (1 - p3.est));
-        const cum3_low = 1 - ((1 - p2.low) * (1 - p3.low));
-        const cum3_high = 1 - ((1 - p2.high) * (1 - p3.high));
+        // Cycle 2 CI (using Variance of eta2)
+        const var_eta2 = Veta[0][0];
+        const ci2_cycle = logitCI_eta(eta2, var_eta2);
+
+        // Cumulative Probabilities (Conditioned on Cycle 1 Fail)
+        // Cumulative 2 = p2
+        // Cumulative 3 = 1 - (1 - p2) * (1 - p3)
+        
+        const cum2_est = p2;
+        const cum3_est = 1 - (1 - p2) * (1 - p3);
+
+        // Delta Method Gradients
+        // Gradient for Cum2 (which is just p2) wrt (eta2, eta3)
+        // d(p2)/d(eta2) = p2(1-p2), d(p2)/d(eta3) = 0
+        const d2 = p2 * (1 - p2);
+        const d3 = p3 * (1 - p3);
+
+        const grad_cum2 = [d2, 0];
+
+        // Gradient for Cum3 wrt (eta2, eta3)
+        // Cum3 = 1 - (1-p2)(1-p3)
+        // d(Cum3)/d(eta2) = d2 * (1-p3)
+        // d(Cum3)/d(eta3) = d3 * (1-p2)
+        const grad_cum3 = [
+            d2 * (1 - p3),
+            d3 * (1 - p2)
+        ];
+
+        // Variances using g' Veta g
+        function quad2(g, M) {
+            return g[0]*(M[0][0]*g[0] + M[0][1]*g[1]) +
+                   g[1]*(M[1][0]*g[0] + M[1][1]*g[1]);
+        }
+
+        const var_cum2 = quad2(grad_cum2, Veta);
+        const var_cum3 = quad2(grad_cum3, Veta);
+
+        // Confidence Intervals
+        const ci2 = logitCI_prob(cum2_est, var_cum2);
+        const ci3 = logitCI_prob(cum3_est, var_cum3);
 
         document.getElementById('res2').innerText = (cum2_est * 100).toFixed(1) + "%";
-        /*document.getElementById('ci2').innerText = `(${ (cum2_low*100).toFixed(1) }% - ${ (cum2_high*100).toFixed(1) }%)`;*/
+        document.getElementById('ci2').innerText = `(${ (ci2.low*100).toFixed(1) }% - ${ (ci2.high*100).toFixed(1) }%)`;
 
         document.getElementById('res3').innerText = (cum3_est * 100).toFixed(1) + "%";
-        /*document.getElementById('ci3').innerText = `(${ (cum3_low*100).toFixed(1) }% - ${ (cum3_high*100).toFixed(1) }%)`;*/
+        document.getElementById('ci3').innerText = `(${ (ci3.low*100).toFixed(1) }% - ${ (ci3.high*100).toFixed(1) }%)`;
 
         document.getElementById('results').style.display = 'block';
     }
